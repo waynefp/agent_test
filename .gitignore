@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Environment variables (IMPORTANT - contains API keys!)
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Testing
+coverage/
+.nyc_output/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data files (might contain sensitive conversation data)
+data/conversations/*.json
+data/tasks/*.json
+
+# Keep the directories but not the files
+!data/conversations/.gitkeep
+!data/tasks/.gitkeep
+
+# Temporary files
+*.tmp
+.cache/
+tmpclaude-*
+nul

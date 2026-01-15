@@ -1,0 +1,65 @@
+{
+  "compilerOptions": {
+    /* Language and Environment */
+    "target": "ES2022",                       // Use modern JavaScript features
+    "lib": ["ES2022"],                        // Include ES2022 standard library
+    "module": "ESNext",                       // Use ES modules (import/export)
+    "moduleResolution": "bundler",            // How to resolve module imports
+
+    /* Emit */
+    "outDir": "./dist",                       // Where compiled JavaScript goes
+    "sourceMap": true,                        // Generate .map files for debugging
+    "removeComments": false,                  // Keep comments in compiled code
+
+    /* Interop Constraints */
+    "esModuleInterop": true,                  // Better compatibility with CommonJS
+    "allowSyntheticDefaultImports": true,     // Allow default imports from modules
+    "forceConsistentCasingInFileNames": true, // Enforce consistent file name casing
+    "isolatedModules": true,                  // Ensure each file can be transpiled independently
+
+    /* Type Checking - STRICT MODE (helps you learn good practices!) */
+    "strict": true,                           // Enable all strict type checking
+    "noImplicitAny": true,                    // Error on variables with implicit 'any' type
+    "strictNullChecks": true,                 // Catch potential null/undefined errors
+    "strictFunctionTypes": true,              // Strict checking of function types
+    "strictPropertyInitialization": true,     // Class properties must be initialized
+    "noImplicitThis": true,                   // Error when 'this' has implicit 'any' type
+    "alwaysStrict": true,                     // Emit "use strict" in compiled code
+
+    /* Additional Checks */
+    "noUnusedLocals": true,                   // Report unused local variables
+    "noUnusedParameters": true,               // Report unused function parameters
+    "noImplicitReturns": true,                // Error if function has inconsistent returns
+    "noFallthroughCasesInSwitch": true,       // Report fallthrough in switch statements
+
+    /* Module Resolution */
+    "resolveJsonModule": true,                // Allow importing .json files
+    "allowImportingTsExtensions": true,       // Allow importing .ts files directly
+    "noEmit": true,                           // Don't emit files (tsx handles this in dev)
+
+    /* Path Aliases - Makes imports cleaner */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],                       // Use @/agent/Agent instead of ../../../agent/Agent
+      "@agent/*": ["src/agent/*"],
+      "@tools/*": ["src/tools/*"],
+      "@types/*": ["src/types/*"],
+      "@config/*": ["src/config/*"],
+      "@utils/*": ["src/utils/*"],
+      "@cli/*": ["src/cli/*"]
+    },
+
+    /* Other */
+    "skipLibCheck": true                      // Skip type checking of declaration files (faster)
+  },
+
+  /* What files to include/exclude */
+  "include": [
+    "src/**/*"                                // Include all files in src/
+  ],
+  "exclude": [
+    "node_modules",                           // Don't compile dependencies
+    "dist",                                   // Don't compile output
+    "**/*.test.ts"                            // Don't compile tests (Jest handles them)
+  ]
+}
