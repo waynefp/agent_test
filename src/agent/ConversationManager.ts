@@ -90,6 +90,55 @@ export class ConversationManager {
   }
 
   /**
+   * Add a message from an Anthropic API response
+   * BEGINNER NOTE: Use this to add Claude's responses directly
+   * Handles text, tool_use, and other content types
+   *
+   * @param response - The response from Anthropic API
+   */
+  addAssistantResponse(response: any): Message {
+    // Convert Anthropic content blocks to our format
+    const content: MessageContent[] = response.content.map((block: any) => {
+      if (block.type === 'text') {
+        return {
+          type: 'text',
+          text: block.text,
+        };
+      } else if (block.type === 'tool_use') {
+        return {
+          type: 'tool_use',
+          id: block.id,
+          name: block.name,
+          input: block.input,
+        };
+      }
+      // Pass through other types as-is
+      return block;
+    });
+
+    return this.addMessage('assistant', content);
+  }
+
+  /**
+   * Add a tool result message
+   * BEGINNER NOTE: Use this after executing a tool to send the result back
+   *
+   * @param toolUseId - The ID from the tool_use block
+   * @param result - The result from the tool
+   * @param isError - Whether this is an error result
+   */
+  addToolResult(toolUseId: string, result: string, isError: boolean = false): Message {
+    const content: MessageContent = {
+      type: 'tool_result',
+      tool_use_id: toolUseId,
+      content: result,
+      is_error: isError,
+    };
+
+    return this.addMessage('user', [content]);
+  }
+
+  /**
    * Get all messages in the conversation
    * BEGINNER NOTE: Returns a copy so you can't accidentally modify the original
    */

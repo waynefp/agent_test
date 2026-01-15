@@ -2,11 +2,11 @@
  * Agent Class
  *
  * The core agent that orchestrates conversations with Claude.
- * This is the "brain" that coordinates everything.
+ * Now with TOOL SUPPORT! Claude can use tools autonomously.
  *
  * BEGINNER NOTE: The Agent class is like a conductor in an orchestra -
  * it coordinates the ConversationManager (memory), Anthropic client (communication),
- * and eventually tools and tasks.
+ * and now the ToolRegistry and ToolExecutor (tools/abilities).
  */
 
 import type Anthropic from '@anthropic-ai/sdk';
@@ -16,29 +16,45 @@ import {
   createMessageParams,
   DEFAULT_AGENT_CONFIG,
 } from '../config/anthropic.config.js';
+import { createToolRegistry, ToolRegistry } from '../tools/ToolRegistry.js';
+import { createToolExecutor, ToolExecutor } from '../tools/ToolExecutor.js';
+import type { ITool } from '../types/tool.types.js';
 import type { AgentConfig, AgentResponse, ChatOptions, AgentState } from '../types/agent.types.js';
-import type { Message } from '../types/conversation.types.js';
+import type { Message, ToolUseContent } from '../types/conversation.types.js';
 import { logger } from '../utils/logger.js';
 import { getErrorMessage } from '../utils/errors.js';
 
 /**
- * Agent class
+ * Agent class with tool support
  * BEGINNER NOTE: This is the main class you'll interact with to chat with Claude
  */
 export class Agent {
   private client: Anthropic;
   private conversationManager: ConversationManager;
+  private toolRegistry: ToolRegistry;
+  private toolExecutor: ToolExecutor;
   private config: AgentConfig;
   private state: AgentState;
 
   /**
    * Create a new Agent
    * @param config - Optional configuration (uses defaults if not provided)
+   * @param tools - Optional array of tools to register
    */
-  constructor(config?: Partial<AgentConfig>) {
+  constructor(config?: Partial<AgentConfig>, tools?: ITool[]) {
     this.config = { ...DEFAULT_AGENT_CONFIG, ...config };
     this.client = getAnthropicClient();
     this.conversationManager = createConversationManager();
+
+    // Initialize tool system
+    this.toolRegistry = createToolRegistry();
+    this.toolExecutor = createToolExecutor(this.toolRegistry);
+
+    // Register provided tools
+    if (tools && tools.length > 0) {
+      this.toolRegistry.registerMany(tools);
+      logger.info(`Registered ${tools.length} tool(s)`);
+    }
 
     // Initialize state
     this.state = {
@@ -53,12 +69,36 @@ export class Agent {
     logger.agent('Agent initialized', {
       model: this.config.model,
       conversationId: this.state.currentConversationId,
+      toolsEnabled: this.config.enableTools && this.toolRegistry.getToolCount() > 0,
+      toolCount: this.toolRegistry.getToolCount(),
     });
   }
 
   /**
+   * Register a tool
+   * BEGINNER NOTE: Add a new tool that Claude can use
+   *
+   * @param tool - The tool to register
+   */
+  registerTool(tool: ITool): void {
+    this.toolRegistry.register(tool);
+    logger.success(`Tool registered: ${tool.name}`);
+  }
+
+  /**
+   * Register multiple tools
+   *
+   * @param tools - Array of tools to register
+   */
+  registerTools(tools: ITool[]): void {
+    this.toolRegistry.registerMany(tools);
+    logger.success(`Registered ${tools.length} tool(s)`);
+  }
+
+  /**
    * Send a message to Claude and get a response
-   * BEGINNER NOTE: This is the main method you'll use - send a message, get a reply!
+   * BEGINNER NOTE: This is the main method - it now includes the "agentic loop"
+   * where Claude can autonomously decide to use tools!
    *
    * @param userMessage - What the user wants to say
    * @param options - Optional chat options
@@ -72,39 +112,17 @@ export class Agent {
       logger.info(`User: ${userMessage}`);
       this.conversationManager.addTextMessage('user', userMessage);
 
-      // Get conversation history in Anthropic format
-      const messages = this.conversationManager.toAnthropicFormat();
-
-      // Create the API request parameters
-      const params = createMessageParams(messages, {
-        ...this.config,
-        systemPrompt: options?.systemPrompt || this.config.systemPrompt,
-      });
-
-      logger.agent('Sending request to Claude API...');
-
-      // Call the Anthropic API
-      const response = await this.client.messages.create(params);
-
-      // Extract the text from the response
-      // BEGINNER NOTE: Claude's response can have multiple content blocks,
-      // but for now we're just getting the text
-      const assistantMessage = this.extractTextFromResponse(response);
-
-      // Add assistant's response to conversation history
-      this.conversationManager.addTextMessage('assistant', assistantMessage);
+      // Run the agentic loop
+      // BEGINNER NOTE: This loop continues until Claude gives a final text response
+      const finalResponse = await this.agenticLoop(options);
 
       // Update state
-      this.state.messageCount += 2; // user + assistant
-      this.state.totalTokensUsed += response.usage.input_tokens + response.usage.output_tokens;
+      const responseTime = Date.now() - startTime;
       this.state.lastActiveAt = new Date();
 
-      // Log the response
-      const responseTime = Date.now() - startTime;
-      logger.success(`Assistant responded in ${responseTime}ms`);
-      logger.info(`Tokens used: ${response.usage.input_tokens} in, ${response.usage.output_tokens} out`);
+      logger.success(`Total response time: ${responseTime}ms`);
 
-      return assistantMessage;
+      return finalResponse;
     } catch (error) {
       logger.error('Failed to get response from Claude', error);
       throw new Error(`Chat failed: ${getErrorMessage(error)}`);
@@ -112,9 +130,147 @@ export class Agent {
   }
 
   /**
+   * The Agentic Loop
+   * BEGINNER NOTE: This is the magic! Claude can:
+   * 1. Decide to use a tool
+   * 2. We execute it
+   * 3. Send the result back
+   * 4. Claude continues (maybe uses another tool, or gives final answer)
+   * 5. Loop until Claude gives a final text response
+   *
+   * @param options - Chat options
+   * @returns The final text response from Claude
+   */
+  private async agenticLoop(options?: ChatOptions): Promise<string> {
+    const maxTurns = options?.maxToolTurns || 10; // Prevent infinite loops
+    let turnCount = 0;
+
+    while (turnCount < maxTurns) {
+      turnCount++;
+      logger.debug(`Agentic loop turn ${turnCount}/${maxTurns}`);
+
+      // Get conversation history
+      const messages = this.conversationManager.toAnthropicFormat();
+
+      // Prepare API request
+      const params: any = createMessageParams(messages, {
+        ...this.config,
+        systemPrompt: options?.systemPrompt || this.config.systemPrompt,
+      });
+
+      // Add tools if enabled
+      if (this.config.enableTools && this.toolRegistry.getToolCount() > 0) {
+        params.tools = this.toolRegistry.toAnthropicFormat();
+        logger.debug(`Tools available: ${this.toolRegistry.getToolNames().join(', ')}`);
+      }
+
+      logger.agent('Sending request to Claude API...');
+
+      // Call Claude
+      const response = await this.client.messages.create(params);
+
+      // Update token count
+      this.state.totalTokensUsed += response.usage.input_tokens + response.usage.output_tokens;
+      logger.info(`Tokens used: ${response.usage.input_tokens} in, ${response.usage.output_tokens} out`);
+
+      // Add assistant's response to conversation
+      this.conversationManager.addAssistantResponse(response);
+      this.state.messageCount++;
+
+      // Check the stop reason
+      if (response.stop_reason === 'end_turn') {
+        // Claude is done - extract and return the text
+        const finalText = this.extractTextFromResponse(response);
+        logger.success('Claude finished (end_turn)');
+        return finalText;
+      }
+
+      if (response.stop_reason === 'tool_use') {
+        // Claude wants to use tools!
+        logger.info('Claude wants to use tools');
+
+        // Extract tool uses from response
+        const toolUses = this.extractToolUses(response);
+
+        if (toolUses.length === 0) {
+          // No tool uses found (shouldn't happen)
+          logger.warn('stop_reason was tool_use but no tools found');
+          return this.extractTextFromResponse(response);
+        }
+
+        // Execute all tools
+        for (const toolUse of toolUses) {
+          await this.executeAndAddToolResult(toolUse);
+        }
+
+        // Continue the loop - Claude will process the tool results
+        continue;
+      }
+
+      if (response.stop_reason === 'max_tokens') {
+        logger.warn('Response stopped due to max_tokens');
+        return this.extractTextFromResponse(response) + '\n[Response truncated due to length]';
+      }
+
+      // For any other stop reason, return what we have
+      logger.info(`Response stopped: ${response.stop_reason}`);
+      return this.extractTextFromResponse(response);
+    }
+
+    // Max turns reached
+    logger.warn(`Agentic loop reached max turns (${maxTurns})`);
+    return 'Sorry, I reached the maximum number of tool uses for this conversation. Please try rephrasing your question.';
+  }
+
+  /**
+   * Execute a tool and add the result to the conversation
+   * BEGINNER NOTE: This runs the tool and sends the result back to Claude
+   *
+   * @param toolUse - The tool use content block from Claude
+   */
+  private async executeAndAddToolResult(toolUse: ToolUseContent): Promise<void> {
+    try {
+      logger.tool(toolUse.name, 'executing', toolUse.input);
+
+      // Execute the tool
+      const result = await this.toolExecutor.executeTool(
+        toolUse.name,
+        toolUse.input
+      );
+
+      this.state.toolCallCount++;
+
+      // Format result as string for Claude
+      const resultString = JSON.stringify(result.data || result.error, null, 2);
+
+      // Add tool result to conversation
+      this.conversationManager.addToolResult(
+        toolUse.id,
+        resultString,
+        !result.success
+      );
+
+      if (result.success) {
+        logger.success(`Tool ${toolUse.name} executed successfully`);
+      } else {
+        logger.warn(`Tool ${toolUse.name} failed: ${result.error}`);
+      }
+    } catch (error) {
+      // Tool execution failed
+      logger.error(`Tool ${toolUse.name} execution error:`, error);
+
+      // Send error back to Claude
+      this.conversationManager.addToolResult(
+        toolUse.id,
+        `Error executing tool: ${getErrorMessage(error)}`,
+        true
+      );
+    }
+  }
+
+  /**
    * Extract text from Anthropic's response
-   * BEGINNER NOTE: Claude can return different types of content.
-   * For now, we just extract the text.
+   * BEGINNER NOTE: Gets just the text parts from Claude's response
    *
    * @param response - Response from Anthropic API
    * @returns The text content
@@ -128,13 +284,35 @@ export class Agent {
       return '';
     }
 
-    // Join all text blocks with newlines
     return textBlocks.map((block) => block.text).join('\n\n');
   }
 
   /**
+   * Extract tool uses from Anthropic's response
+   * BEGINNER NOTE: Finds all the tools Claude wants to use
+   *
+   * @param response - Response from Anthropic API
+   * @returns Array of tool use content blocks
+   */
+  private extractToolUses(response: Anthropic.Message): ToolUseContent[] {
+    const toolUses: ToolUseContent[] = [];
+
+    for (const block of response.content) {
+      if (block.type === 'tool_use') {
+        toolUses.push({
+          type: 'tool_use',
+          id: block.id,
+          name: block.name,
+          input: block.input,
+        });
+      }
+    }
+
+    return toolUses;
+  }
+
+  /**
    * Get the conversation history
-   * BEGINNER NOTE: See everything that's been said so far
    */
   getConversationHistory(): Message[] {
     return this.conversationManager.getMessages();
@@ -149,7 +327,6 @@ export class Agent {
 
   /**
    * Clear the conversation history
-   * BEGINNER NOTE: Start fresh - forget everything that's been said
    */
   clearConversation(): void {
     this.conversationManager.clearMessages();
@@ -158,7 +335,6 @@ export class Agent {
 
   /**
    * Get the agent's current state
-   * BEGINNER NOTE: See statistics about the agent's activity
    */
   getState(): AgentState {
     return { ...this.state };
@@ -173,7 +349,6 @@ export class Agent {
 
   /**
    * Update the agent's configuration
-   * BEGINNER NOTE: Change settings like temperature, max tokens, etc.
    *
    * @param config - New configuration values
    */
@@ -185,7 +360,6 @@ export class Agent {
 
   /**
    * Get statistics about token usage
-   * BEGINNER NOTE: Tokens cost money, so it's good to track usage!
    */
   getTokenUsage(): {
     total: number;
@@ -201,7 +375,6 @@ export class Agent {
 
   /**
    * Get a simple text representation of the conversation
-   * BEGINNER NOTE: Useful for displaying the conversation in the terminal
    */
   getConversationText(): string {
     const messages = this.conversationManager.getMessages();
@@ -213,20 +386,41 @@ export class Agent {
           .join('\n');
 
         const role = msg.role === 'user' ? 'You' : 'Assistant';
-        return `${role}: ${text}`;
+        return text ? `${role}: ${text}` : '';
       })
+      .filter(line => line.length > 0)
       .join('\n\n');
+  }
+
+  /**
+   * Get list of available tools
+   */
+  getAvailableTools(): string[] {
+    return this.toolRegistry.getToolNames();
+  }
+
+  /**
+   * Get tool statistics
+   */
+  getToolStats(): {
+    available: number;
+    used: number;
+  } {
+    return {
+      available: this.toolRegistry.getToolCount(),
+      used: this.state.toolCallCount,
+    };
   }
 }
 
 /**
  * Factory function to create a new Agent
- * BEGINNER NOTE: Use this to create your agent:
- * const agent = createAgent({ temperature: 0.7 });
+ * BEGINNER NOTE: Use this to create your agent with tools!
  *
  * @param config - Optional configuration
+ * @param tools - Optional array of tools
  * @returns A new Agent instance
  */
-export function createAgent(config?: Partial<AgentConfig>): Agent {
-  return new Agent(config);
+export function createAgent(config?: Partial<AgentConfig>, tools?: ITool[]): Agent {
+  return new Agent(config, tools);
 }
