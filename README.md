@@ -2,6 +2,8 @@
 
 A hands-on learning project for building conversational AI agents using the Anthropic Agent SDK.
 
+**Repository:** https://github.com/waynefp/agent_test
+
 ## 🚀 Quick Start
 
 ```bash

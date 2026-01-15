@@ -22,6 +22,8 @@
 
 **Current Status:** ✅ Phase 1 Complete | ✅ Phase 2 Complete | 🔜 Phase 3 Next
 
+**GitHub Repository:** https://github.com/waynefp/agent_test
+
 ---
 
 ## 🏗️ What We've Built
