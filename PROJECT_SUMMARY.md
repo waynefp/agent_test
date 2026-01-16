@@ -1,12 +1,14 @@
 # Agent SDK Learning Project - Progress Summary
 
-**Last Updated:** Phase 2 Complete - January 14, 2025
+**Last Updated:** Phase 4 Complete - January 15, 2025
 
 ## 📋 Table of Contents
 - [Project Overview](#project-overview)
 - [What We've Built](#what-weve-built)
 - [Phase 1: Foundation](#phase-1-foundation)
 - [Phase 2: Core Agent](#phase-2-core-agent)
+- [Phase 3: Tool System Foundation](#phase-3-tool-system-foundation)
+- [Phase 4: Tool Calling Integration](#phase-4-tool-calling-integration)
 - [File Structure](#file-structure)
 - [Key Concepts Learned](#key-concepts-learned)
 - [How to Use](#how-to-use)
@@ -20,7 +22,7 @@
 
 **Your Role:** Beginner learning TypeScript/Node.js through hands-on development
 
-**Current Status:** ✅ Phase 1 Complete | ✅ Phase 2 Complete | 🔜 Phase 3 Next
+**Current Status:** ✅ Phase 1-4 Complete | 🔜 Phase 5 Next
 
 **GitHub Repository:** https://github.com/waynefp/agent_test
 
@@ -49,6 +51,19 @@
    - Graceful failures with helpful messages
    - Environment validation
    - API error handling
+
+5. **Tool System (NEW in Phase 3-4)**
+   - Extensible tool architecture with `BaseTool` class
+   - `CalculatorTool` for math operations (add, subtract, multiply, divide)
+   - `ToolRegistry` for managing available tools
+   - `ToolExecutor` for running tools safely
+   - Zod schema validation for tool inputs
+
+6. **Agentic Loop (NEW in Phase 4)**
+   - Claude can autonomously decide when to use tools
+   - Multi-turn tool interactions
+   - Tool results sent back to Claude for reasoning
+   - Configurable max turns to prevent infinite loops
 
 ---
 
@@ -264,6 +279,168 @@ updateConfig(config)           // Change settings
 
 ---
 
+## 🔧 Phase 3: Tool System Foundation
+
+**Completed:** January 15, 2025
+**Goal:** Build an extensible tool architecture
+
+### What We Built
+
+#### 1. BaseTool Abstract Class (src/tools/definitions/BaseTool.ts)
+- **Purpose:** Template for all tools to inherit from
+- **Features:**
+  - Abstract methods: `name`, `description`, `inputSchema`, `execute()`
+  - Built-in input validation using Zod schemas
+  - Safe execution with `run()` method (validates → executes → handles errors)
+  - Timeout support for long-running operations
+  - Automatic conversion to Anthropic API format
+
+**Key Methods:**
+```typescript
+validate(input)           // Validate input against schema
+execute(input, options)   // Abstract - implement your logic
+run(input, options)       // Safe wrapper with validation & timing
+toAnthropicFormat()       // Convert to Claude's tool format
+```
+
+#### 2. CalculatorTool (src/tools/definitions/CalculatorTool.ts)
+- **Purpose:** Example tool demonstrating the pattern
+- **Operations:** add, subtract, multiply, divide
+- **Features:**
+  - Zod schema validation for inputs
+  - Division by zero handling
+  - Human-readable expression output
+
+#### 3. ToolRegistry (src/tools/ToolRegistry.ts)
+- **Purpose:** Central registry to manage all tools
+- **Features:**
+  - Register/unregister tools
+  - Tool name validation (lowercase, alphanumeric, underscores)
+  - Singleton or instance-based usage
+  - Bulk tool registration with `registerMany()`
+  - Convert all tools to Anthropic format
+
+**Key Methods:**
+```typescript
+register(tool)            // Add a tool
+unregister(toolName)      // Remove a tool
+getTool(toolName)         // Retrieve a tool
+getAllTools()             // Get all tools
+toAnthropicFormat()       // Convert all for Claude
+```
+
+### Key Files Created (Phase 3)
+```
+✅ src/tools/definitions/BaseTool.ts
+✅ src/tools/definitions/CalculatorTool.ts
+✅ src/tools/definitions/index.ts
+✅ src/tools/ToolRegistry.ts
+✅ docs/TOOLS.md
+```
+
+### What You Learned (Phase 3)
+
+**Object-Oriented Programming:**
+- Abstract classes and inheritance
+- The `extends` keyword
+- Implementing abstract methods
+- Protected vs private vs public members
+
+**Design Patterns:**
+- **Strategy Pattern** - Tools implement a common interface
+- **Registry Pattern** - Central place to manage tools
+- **Template Method Pattern** - BaseTool defines the workflow
+
+**Zod Validation:**
+- Defining schemas with `z.object()`, `z.enum()`, `z.number()`
+- Optional fields with `.optional()` and `.default()`
+- Type inference with `z.infer<typeof Schema>`
+- Converting Zod to JSON Schema for APIs
+
+---
+
+## 🔗 Phase 4: Tool Calling Integration
+
+**Completed:** January 15, 2025
+**Goal:** Enable Claude to autonomously use tools
+
+### What We Built
+
+#### 1. ToolExecutor (src/tools/ToolExecutor.ts)
+- **Purpose:** Execute tools by name with proper error handling
+- **Features:**
+  - Look up tools from registry
+  - Execute with metadata tracking
+  - Sequential execution with `executeMany()`
+  - Parallel execution with `executeManyParallel()`
+
+**Key Methods:**
+```typescript
+executeTool(name, input)           // Run a single tool
+executeToolWithMetadata(...)       // Run with tracking info
+executeMany(toolCalls)             // Run sequentially
+executeManyParallel(toolCalls)     // Run in parallel
+```
+
+#### 2. Agent with Agentic Loop (src/agent/Agent.ts - Updated)
+- **Purpose:** Allow Claude to autonomously decide when to use tools
+- **The Agentic Loop:**
+  1. User sends message
+  2. Agent sends to Claude (with available tools)
+  3. Claude decides: respond OR use a tool
+  4. If tool_use: Execute tool → Send result back → Go to step 3
+  5. If end_turn: Return final response to user
+
+**New Agent Features:**
+- `registerTool(tool)` - Add tools at runtime
+- `getAvailableTools()` - List registered tools
+- `getToolStats()` - Track tool usage
+- Tool results stored in conversation history
+- Max turns limit to prevent infinite loops
+
+#### 3. ConversationManager Updates (src/agent/ConversationManager.ts)
+- **New Method:** `addToolResult(toolUseId, content, isError)`
+- Properly formats tool results for Anthropic API
+- Tracks tool use blocks in conversation
+
+#### 4. Test Script (src/test-tools.ts)
+- Tests tool execution directly
+- Tests agent with tools end-to-end
+- Verifies agentic loop behavior
+
+### Key Files Created/Updated (Phase 4)
+```
+✅ src/tools/ToolExecutor.ts (new)
+✅ src/agent/Agent.ts (updated with agentic loop)
+✅ src/agent/ConversationManager.ts (updated)
+✅ src/test-tools.ts (new)
+```
+
+### What You Learned (Phase 4)
+
+**The Agentic Loop:**
+- Understanding stop reasons (`end_turn`, `tool_use`, `max_tokens`)
+- Looping until Claude gives a final response
+- Handling multiple tool calls in one turn
+- Preventing infinite loops with max turns
+
+**API Concepts:**
+- Tool definitions in Anthropic format
+- Content blocks (`text`, `tool_use`, `tool_result`)
+- Message roles and tool result formatting
+
+**Advanced TypeScript:**
+- Type guards for content blocks
+- Async iteration patterns
+- Error propagation and handling
+
+**State Management:**
+- Tracking tool call counts
+- Managing conversation with tool results
+- Immutable state updates
+
+---
+
 ## 📁 File Structure (Detailed)
 
 ### Source Code (src/)
@@ -272,20 +449,19 @@ updateConfig(config)           // Change settings
 src/
 ├── index.ts                      # Main entry point (starts chat)
 ├── test-agent.ts                 # Automated test script
+├── test-tools.ts                 # Tool testing script
 │
 ├── agent/                        # Agent logic
-│   ├── Agent.ts                  # Core agent class
-│   ├── ConversationManager.ts    # Message history management
-│   └── TaskTracker.ts            # [Phase 5] Task tracking
+│   ├── Agent.ts                  # Core agent class (with agentic loop)
+│   └── ConversationManager.ts    # Message history management
 │
-├── tools/                        # Tool system [Phase 3+]
-│   ├── ToolRegistry.ts           # [Phase 3] Tool management
-│   ├── ToolExecutor.ts           # [Phase 4] Tool execution
-│   ├── definitions/              # Individual tools
-│   │   ├── BaseTool.ts           # [Phase 3] Abstract base class
-│   │   ├── CalculatorTool.ts     # [Phase 3] Math operations
-│   │   └── FileSystemTool.ts     # [Phase 4] File operations
-│   └── schemas/                  # Zod validation schemas
+├── tools/                        # Tool system ✅
+│   ├── ToolRegistry.ts           # Tool management
+│   ├── ToolExecutor.ts           # Tool execution
+│   └── definitions/              # Individual tools
+│       ├── BaseTool.ts           # Abstract base class
+│       ├── CalculatorTool.ts     # Math operations
+│       └── index.ts              # Re-exports
 │
 ├── types/                        # TypeScript definitions
 │   ├── tool.types.ts             # Tool-related types
@@ -545,38 +721,7 @@ const agent = createAgent({
 
 ### Upcoming Phases
 
-#### Phase 3: Tool System Foundation (Days 5-7)
-**Goal:** Understand tool architecture
-
-**What We'll Build:**
-- `BaseTool` abstract class
-- `CalculatorTool` (add, subtract, multiply, divide)
-- `ToolRegistry` for managing tools
-- `ToolExecutor` for running tools
-- Documentation on creating custom tools
-
-**What You'll Learn:**
-- Abstract classes and inheritance
-- Strategy pattern
-- Zod schema validation
-- Registry pattern
-
-#### Phase 4: Tool Calling Integration (Days 8-10)
-**Goal:** Agent can use tools autonomously
-
-**What We'll Build:**
-- Update Agent to support tools
-- Implement the "agentic loop" (tool calling loop)
-- Add `FileSystemTool` (read files, list directories)
-- Handle tool results and continue conversation
-
-**What You'll Learn:**
-- The agentic loop pattern
-- Tool use in Claude's API
-- Handling tool results
-- Multi-turn tool interactions
-
-#### Phase 5: Task Tracking (Days 11-12)
+#### Phase 5: Task Tracking (Days 11-12) 🔜 NEXT
 **Goal:** Track what the agent is working on
 
 **What We'll Build:**
@@ -643,9 +788,9 @@ const agent = createAgent({
 |-------|--------|----------------|-----------------|
 | Phase 1: Foundation | ✅ Complete | Jan 14, 2025 | Project setup, types, utils |
 | Phase 2: Core Agent | ✅ Complete | Jan 14, 2025 | Working conversational agent |
-| Phase 3: Tool Foundation | 🔜 Next | - | BaseTool, CalculatorTool |
-| Phase 4: Tool Integration | ⏳ Pending | - | Agentic loop, FileSystemTool |
-| Phase 5: Task Tracking | ⏳ Pending | - | TaskTracker, task persistence |
+| Phase 3: Tool Foundation | ✅ Complete | Jan 15, 2025 | BaseTool, CalculatorTool, ToolRegistry |
+| Phase 4: Tool Integration | ✅ Complete | Jan 15, 2025 | Agentic loop, ToolExecutor |
+| Phase 5: Task Tracking | 🔜 Next | - | TaskTracker, task persistence |
 | Phase 6: Persistence | ⏳ Pending | - | Save/load conversations |
 | Phase 7: Enhanced UX | ⏳ Pending | - | Better CLI experience |
 | Phase 8: Testing & Docs | ⏳ Pending | - | Tests, documentation |
@@ -679,6 +824,10 @@ const agent = createAgent({
 - ✅ CLI development (inquirer, chalk)
 - ✅ Error handling patterns
 - ✅ Project structure and organization
+- ✅ Abstract classes and inheritance (Phase 3)
+- ✅ Zod schema validation (Phase 3)
+- ✅ The agentic loop pattern (Phase 4)
+- ✅ Tool calling in Claude's API (Phase 4)
 
 ### Software Engineering Concepts
 - ✅ Separation of concerns
@@ -688,6 +837,9 @@ const agent = createAgent({
 - ✅ Type safety and validation
 - ✅ Environment configuration
 - ✅ Logging and debugging
+- ✅ Strategy pattern (Phase 3)
+- ✅ Registry pattern (Phase 3)
+- ✅ Template method pattern (Phase 3)
 
 ### Tools & Technologies
 - ✅ npm (package management)
@@ -696,6 +848,7 @@ const agent = createAgent({
 - ✅ Git (version control)
 - ✅ Anthropic SDK
 - ✅ Terminal/CLI tools
+- ✅ Zod (runtime validation)
 
 ---
 
@@ -739,5 +892,5 @@ A: Separation of concerns. Each file has one job, making code easier to understa
 
 ---
 
-**Last Updated:** Phase 2 Complete - January 14, 2025
-**Next Update:** After Phase 3 (Tool System Foundation)
+**Last Updated:** Phase 4 Complete - January 15, 2025
+**Next Update:** After Phase 5 (Task Tracking)

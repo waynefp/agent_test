@@ -38,10 +38,22 @@ npm run test-agent
 - Interactive CLI interface
 - Token usage tracking
 
-**Phase 3: Tool System** 🔜 Next
-- Create custom tools (calculator, file operations, etc.)
-- Tool registry and execution
-- Zod schema validation
+**Phase 3: Tool System Foundation** ✅ Complete
+- `BaseTool` abstract class for creating tools
+- `CalculatorTool` (add, subtract, multiply, divide)
+- `ToolRegistry` for managing available tools
+- Zod schema validation for tool inputs
+
+**Phase 4: Tool Calling Integration** ✅ Complete
+- `ToolExecutor` for running tools safely
+- Agent updated with agentic loop
+- Claude can autonomously decide when to use tools
+- Multi-turn tool interactions
+
+**Phase 5: Task Tracking** 🔜 Next
+- TaskTracker class for managing tasks
+- Hierarchical task structure
+- Task persistence to JSON files
 
 ## 🎯 What This Project Does
 
@@ -140,9 +152,9 @@ This project follows an 8-phase learning path:
 
 1. **Foundation** ✅ - Project setup, types, utilities
 2. **Core Agent** ✅ - Conversational AI with memory
-3. **Tool Foundation** 🔜 - Create custom tools
-4. **Tool Integration** - Agent autonomously uses tools
-5. **Task Tracking** - Track tasks and subtasks
+3. **Tool Foundation** ✅ - Create custom tools (BaseTool, CalculatorTool)
+4. **Tool Integration** ✅ - Agent autonomously uses tools (agentic loop)
+5. **Task Tracking** 🔜 - Track tasks and subtasks
 6. **Persistence** - Save/load conversations
 7. **Enhanced UX** - Better CLI experience
 8. **Testing & Docs** - Production-quality code
@@ -163,6 +175,6 @@ ISC
 
 ---
 
-**Current Phase:** 2/8 Complete | **Next:** Tool System Foundation
+**Current Phase:** 4/8 Complete | **Next:** Task Tracking
 
 For detailed progress and concepts learned, see [PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md)
