@@ -12,6 +12,7 @@ import { validateEnvironment } from './config/environment.js';
 import { createAgent } from './agent/Agent.js';
 import { startChatSession } from './cli/commands.js';
 import { getErrorMessage } from './utils/errors.js';
+import { createCalculatorTool } from './tools/definitions/index.js';
 
 /**
  * Main function
@@ -24,14 +25,22 @@ async function main(): Promise<void> {
     validateEnvironment();
     logger.success('Environment configuration valid!');
 
-    // Create the agent
-    logger.info('Creating agent...');
-    const agent = createAgent({
-      // You can customize the agent here
-      // temperature: 0.7,  // Lower = more focused, higher = more creative
-      // maxTokens: 4096,   // Maximum length of responses
-    });
-    logger.success('Agent created successfully!');
+    // Create tools
+    logger.info('Creating tools...');
+    const calculator = createCalculatorTool();
+    logger.success('Calculator tool created!');
+
+    // Create the agent WITH TOOLS
+    logger.info('Creating agent with tools...');
+    const agent = createAgent(
+      {
+        enableTools: true,  // Enable tool usage!
+        // temperature: 0.7,  // Lower = more focused, higher = more creative
+        // maxTokens: 4096,   // Maximum length of responses
+      },
+      [calculator]  // Pass the calculator tool
+    );
+    logger.success(`Agent created with ${agent.getAvailableTools().length} tool(s): ${agent.getAvailableTools().join(', ')}`);
 
     // Start the interactive chat session
     logger.info('Starting interactive chat session...');
