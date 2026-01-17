@@ -19,7 +19,7 @@ import {
 import { createToolRegistry, ToolRegistry } from '../tools/ToolRegistry.js';
 import { createToolExecutor, ToolExecutor } from '../tools/ToolExecutor.js';
 import type { ITool } from '../types/tool.types.js';
-import type { AgentConfig, AgentResponse, ChatOptions, AgentState } from '../types/agent.types.js';
+import type { AgentConfig, ChatOptions, AgentState } from '../types/agent.types.js';
 import type { Message, ToolUseContent } from '../types/conversation.types.js';
 import { logger } from '../utils/logger.js';
 import { getErrorMessage } from '../utils/errors.js';

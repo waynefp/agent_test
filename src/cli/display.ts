@@ -7,6 +7,7 @@
  */
 
 import chalk from 'chalk';
+import type { Task, TaskStatistics, TaskNode } from '../types/task.types.js';
 
 /**
  * Display a welcome message
@@ -151,4 +152,221 @@ export function displayThinking(): void {
 export function clearScreen(): void {
   console.clear();
   displayWelcome();
+}
+
+// ============================================
+// Task Display Functions (Phase 5)
+// ============================================
+
+/**
+ * Get status icon for a task
+ */
+function getStatusIcon(status: Task['status']): string {
+  switch (status) {
+    case 'pending':
+      return chalk.gray('[ ]');
+    case 'in-progress':
+      return chalk.yellow('[~]');
+    case 'completed':
+      return chalk.green('[+]');
+    case 'failed':
+      return chalk.red('[x]');
+    default:
+      return chalk.gray('[?]');
+  }
+}
+
+/**
+ * Get priority color
+ */
+function getPriorityColor(priority: Task['priority']): (text: string) => string {
+  switch (priority) {
+    case 'urgent':
+      return chalk.red;
+    case 'high':
+      return chalk.yellow;
+    case 'medium':
+      return chalk.white;
+    case 'low':
+      return chalk.gray;
+    default:
+      return chalk.white;
+  }
+}
+
+/**
+ * Display a single task in list format
+ */
+export function displayTaskListItem(task: Task, indent: number = 0): void {
+  const prefix = '  '.repeat(indent);
+  const icon = getStatusIcon(task.status);
+  const priorityColor = getPriorityColor(task.priority);
+  const shortId = task.id.substring(0, 8);
+
+  console.log(
+    `${prefix}${icon} ${priorityColor(task.description)} ${chalk.gray(`(${shortId})`)}`
+  );
+}
+
+/**
+ * Display a list of tasks
+ */
+export function displayTasks(tasks: Task[]): void {
+  console.log();
+
+  if (tasks.length === 0) {
+    console.log(chalk.gray('  No tasks found.'));
+    console.log();
+    console.log(chalk.gray('  Use /task add <description> to create a task.'));
+    console.log();
+    return;
+  }
+
+  console.log(chalk.bold.white('=== Tasks ==='));
+  console.log();
+
+  for (const task of tasks) {
+    displayTaskListItem(task);
+  }
+
+  console.log();
+  console.log(chalk.gray(`  ${tasks.length} task(s) total`));
+  console.log();
+}
+
+/**
+ * Display a task tree (hierarchical view)
+ */
+export function displayTaskTree(roots: TaskNode[]): void {
+  console.log();
+
+  if (roots.length === 0) {
+    console.log(chalk.gray('  No tasks found.'));
+    console.log();
+    return;
+  }
+
+  console.log(chalk.bold.white('=== Task Tree ==='));
+  console.log();
+
+  const printNode = (node: TaskNode): void => {
+    displayTaskListItem(node.task, node.depth);
+    for (const child of node.children) {
+      printNode(child);
+    }
+  };
+
+  for (const root of roots) {
+    printNode(root);
+  }
+
+  console.log();
+}
+
+/**
+ * Display detailed task information
+ */
+export function displayTaskDetail(task: Task): void {
+  console.log();
+  console.log(chalk.bold.white('=== Task Details ==='));
+  console.log();
+
+  const icon = getStatusIcon(task.status);
+  const priorityColor = getPriorityColor(task.priority);
+
+  console.log(chalk.cyan('  ID:          ') + chalk.white(task.id));
+  console.log(chalk.cyan('  Description: ') + chalk.white(task.description));
+  console.log(chalk.cyan('  Status:      ') + icon + ' ' + chalk.white(task.status));
+  console.log(chalk.cyan('  Priority:    ') + priorityColor(task.priority));
+  console.log(chalk.cyan('  Created:     ') + chalk.white(task.createdAt.toLocaleString()));
+
+  if (task.startedAt) {
+    console.log(chalk.cyan('  Started:     ') + chalk.white(task.startedAt.toLocaleString()));
+  }
+
+  if (task.completedAt) {
+    console.log(chalk.cyan('  Completed:   ') + chalk.white(task.completedAt.toLocaleString()));
+  }
+
+  if (task.parentId) {
+    console.log(chalk.cyan('  Parent:      ') + chalk.gray(task.parentId.substring(0, 8)));
+  }
+
+  if (task.subtaskIds.length > 0) {
+    console.log(chalk.cyan('  Subtasks:    ') + chalk.white(task.subtaskIds.length.toString()));
+  }
+
+  if (task.metadata) {
+    if (task.metadata.error) {
+      console.log(chalk.cyan('  Error:       ') + chalk.red(task.metadata.error));
+    }
+    if (task.metadata.tags && task.metadata.tags.length > 0) {
+      console.log(chalk.cyan('  Tags:        ') + chalk.white(task.metadata.tags.join(', ')));
+    }
+  }
+
+  console.log();
+}
+
+/**
+ * Display task statistics
+ */
+export function displayTaskStats(stats: TaskStatistics): void {
+  console.log();
+  console.log(chalk.bold.white('=== Task Statistics ==='));
+  console.log();
+
+  console.log(chalk.cyan('  Total Tasks: ') + chalk.white(stats.total.toString()));
+  console.log();
+
+  console.log(chalk.white('  By Status:'));
+  console.log(chalk.gray('    [ ] Pending:     ') + chalk.white(stats.byStatus.pending.toString()));
+  console.log(chalk.yellow('    [~] In Progress: ') + chalk.white(stats.byStatus['in-progress'].toString()));
+  console.log(chalk.green('    [+] Completed:   ') + chalk.white(stats.byStatus.completed.toString()));
+  console.log(chalk.red('    [x] Failed:      ') + chalk.white(stats.byStatus.failed.toString()));
+  console.log();
+
+  console.log(chalk.white('  By Priority:'));
+  console.log(chalk.red('    Urgent: ') + chalk.white(stats.byPriority.urgent.toString()));
+  console.log(chalk.yellow('    High:   ') + chalk.white(stats.byPriority.high.toString()));
+  console.log(chalk.white('    Medium: ') + chalk.white(stats.byPriority.medium.toString()));
+  console.log(chalk.gray('    Low:    ') + chalk.white(stats.byPriority.low.toString()));
+
+  if (stats.successRate !== undefined) {
+    console.log();
+    console.log(
+      chalk.cyan('  Success Rate: ') +
+      chalk.white(`${(stats.successRate * 100).toFixed(1)}%`)
+    );
+  }
+
+  if (stats.averageCompletionTime !== undefined) {
+    console.log(
+      chalk.cyan('  Avg Completion: ') +
+      chalk.white(`${stats.averageCompletionTime.toFixed(1)}s`)
+    );
+  }
+
+  console.log();
+}
+
+/**
+ * Display task help
+ */
+export function displayTaskHelp(): void {
+  console.log();
+  console.log(chalk.bold.white('Task Commands:'));
+  console.log();
+  console.log(chalk.cyan('  /tasks') + '              - List all tasks');
+  console.log(chalk.cyan('  /task add <desc>') + '    - Create a new task');
+  console.log(chalk.cyan('  /task show <id>') + '     - Show task details');
+  console.log(chalk.cyan('  /task start <id>') + '    - Start a task');
+  console.log(chalk.cyan('  /task done <id>') + '     - Mark task completed');
+  console.log(chalk.cyan('  /task fail <id>') + '     - Mark task failed');
+  console.log(chalk.cyan('  /task delete <id>') + '   - Delete a task');
+  console.log(chalk.cyan('  /task stats') + '         - Show task statistics');
+  console.log(chalk.cyan('  /task clear') + '         - Delete all tasks');
+  console.log();
+  console.log(chalk.gray('  Tip: You can use the first 8 characters of a task ID'));
+  console.log();
 }

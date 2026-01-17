@@ -8,7 +8,7 @@
  * register and retrieve tools. Like a phone book for tools!
  */
 
-import type { BaseTool } from './definitions/BaseTool.js';
+
 import type { ITool, ToolDefinition } from '../types/tool.types.js';
 import { logger } from '../utils/logger.js';
 

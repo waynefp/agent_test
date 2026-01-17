@@ -73,7 +73,7 @@ export class CalculatorTool extends BaseTool {
    */
   async execute(
     input: unknown,
-    options?: ToolExecutionOptions
+    _options?: ToolExecutionOptions
   ): Promise<ToolResult> {
     // Cast input to the correct type
     // BEGINNER NOTE: We know it's valid because validate() was called first

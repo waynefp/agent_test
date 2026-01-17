@@ -14,7 +14,7 @@ import type {
   ToolResult,
   ToolDefinition,
   ToolExecutionOptions,
-  ToolExecutionContext,
+
 } from '../../types/tool.types.js';
 import { ToolValidationError, ToolExecutionError } from '../../types/tool.types.js';
 import { logger } from '../../utils/logger.js';

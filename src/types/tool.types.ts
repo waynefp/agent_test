@@ -144,6 +144,17 @@ export interface ITool {
   execute(input: unknown, options?: ToolExecutionOptions): Promise<ToolResult>;
 
   /**
+   * Safe execute with validation and error handling
+   * BEGINNER NOTE: This wraps execute() with validation and timing.
+   * Use this instead of calling execute() directly!
+   *
+   * @param input - The input data
+   * @param options - Optional execution options
+   * @returns A promise that resolves to a ToolResult
+   */
+  run(input: unknown, options?: ToolExecutionOptions): Promise<ToolResult>;
+
+  /**
    * Validate input against the schema
    * BEGINNER NOTE: Call this before execute() to check if input is valid
    *

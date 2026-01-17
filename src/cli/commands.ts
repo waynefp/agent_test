@@ -8,6 +8,7 @@
  */
 
 import { Agent } from '../agent/Agent.js';
+import { TaskTracker } from '../agent/TaskTracker.js';
 import { getUserMessage, confirmAction } from './prompts.js';
 import {
   displayWelcome,
@@ -22,6 +23,10 @@ import {
   displaySeparator,
   displayThinking,
   clearScreen,
+  displayTasks,
+  displayTaskDetail,
+  displayTaskStats,
+  displayTaskHelp,
 } from './display.js';
 import { logger } from '../utils/logger.js';
 
@@ -39,14 +44,24 @@ function isCommand(message: string): boolean {
  *
  * @param command - The command to execute
  * @param agent - The agent instance
+ * @param taskTracker - Optional task tracker instance
  * @returns true if should continue chat loop, false if should exit
  */
-async function handleCommand(command: string, agent: Agent): Promise<boolean> {
-  const cmd = command.toLowerCase().trim();
+async function handleCommand(
+  command: string,
+  agent: Agent,
+  taskTracker?: TaskTracker
+): Promise<boolean> {
+  const parts = command.trim().split(/\s+/);
+  const cmd = parts[0].toLowerCase();
+  const args = parts.slice(1);
 
   switch (cmd) {
     case '/help':
       displayHelp();
+      if (taskTracker) {
+        displayTaskHelp();
+      }
       return true;
 
     case '/exit':
@@ -85,6 +100,25 @@ async function handleCommand(command: string, agent: Agent): Promise<boolean> {
       });
       return true;
 
+    // ============================================
+    // Task Commands (Phase 5)
+    // ============================================
+
+    case '/tasks':
+      if (!taskTracker) {
+        displayError('Task tracking is not enabled');
+        return true;
+      }
+      displayTasks(taskTracker.getAllTasks());
+      return true;
+
+    case '/task':
+      if (!taskTracker) {
+        displayError('Task tracking is not enabled');
+        return true;
+      }
+      return await handleTaskCommand(args, taskTracker);
+
     default:
       displayError(`Unknown command: ${cmd}`);
       displaySystemMessage('Type /help to see available commands');
@@ -93,15 +127,196 @@ async function handleCommand(command: string, agent: Agent): Promise<boolean> {
 }
 
 /**
+ * Handle task subcommands
+ * BEGINNER NOTE: This handles commands like /task add, /task done, etc.
+ *
+ * @param args - Command arguments
+ * @param taskTracker - Task tracker instance
+ * @returns true to continue chat loop
+ */
+async function handleTaskCommand(
+  args: string[],
+  taskTracker: TaskTracker
+): Promise<boolean> {
+  if (args.length === 0) {
+    displayTaskHelp();
+    return true;
+  }
+
+  const subCommand = args[0].toLowerCase();
+  const subArgs = args.slice(1);
+
+  switch (subCommand) {
+    case 'add':
+    case 'create':
+      if (subArgs.length === 0) {
+        displayError('Please provide a task description');
+        displaySystemMessage('Usage: /task add <description>');
+        return true;
+      }
+      const description = subArgs.join(' ');
+      const newTask = await taskTracker.createTask({ description });
+      displaySuccess(`Task created: ${newTask.id.substring(0, 8)}`);
+      displayTaskDetail(newTask);
+      return true;
+
+    case 'show':
+    case 'view':
+      if (subArgs.length === 0) {
+        displayError('Please provide a task ID');
+        displaySystemMessage('Usage: /task show <id>');
+        return true;
+      }
+      const showTask = findTaskByPartialId(taskTracker, subArgs[0]);
+      if (!showTask) {
+        displayError(`Task not found: ${subArgs[0]}`);
+        return true;
+      }
+      displayTaskDetail(showTask);
+      return true;
+
+    case 'start':
+      if (subArgs.length === 0) {
+        displayError('Please provide a task ID');
+        displaySystemMessage('Usage: /task start <id>');
+        return true;
+      }
+      const startTask = findTaskByPartialId(taskTracker, subArgs[0]);
+      if (!startTask) {
+        displayError(`Task not found: ${subArgs[0]}`);
+        return true;
+      }
+      await taskTracker.startTask(startTask.id);
+      displaySuccess(`Task started: ${startTask.description}`);
+      return true;
+
+    case 'done':
+    case 'complete':
+      if (subArgs.length === 0) {
+        displayError('Please provide a task ID');
+        displaySystemMessage('Usage: /task done <id>');
+        return true;
+      }
+      const doneTask = findTaskByPartialId(taskTracker, subArgs[0]);
+      if (!doneTask) {
+        displayError(`Task not found: ${subArgs[0]}`);
+        return true;
+      }
+      await taskTracker.completeTask(doneTask.id);
+      displaySuccess(`Task completed: ${doneTask.description}`);
+      return true;
+
+    case 'fail':
+      if (subArgs.length === 0) {
+        displayError('Please provide a task ID');
+        displaySystemMessage('Usage: /task fail <id>');
+        return true;
+      }
+      const failTask = findTaskByPartialId(taskTracker, subArgs[0]);
+      if (!failTask) {
+        displayError(`Task not found: ${subArgs[0]}`);
+        return true;
+      }
+      const errorMsg = subArgs.slice(1).join(' ') || undefined;
+      await taskTracker.failTask(failTask.id, errorMsg);
+      displaySuccess(`Task marked as failed: ${failTask.description}`);
+      return true;
+
+    case 'delete':
+    case 'remove':
+      if (subArgs.length === 0) {
+        displayError('Please provide a task ID');
+        displaySystemMessage('Usage: /task delete <id>');
+        return true;
+      }
+      const deleteTask = findTaskByPartialId(taskTracker, subArgs[0]);
+      if (!deleteTask) {
+        displayError(`Task not found: ${subArgs[0]}`);
+        return true;
+      }
+      const confirmDelete = await confirmAction(
+        `Delete task "${deleteTask.description}"?`
+      );
+      if (confirmDelete) {
+        await taskTracker.deleteTask(deleteTask.id);
+        displaySuccess('Task deleted');
+      }
+      return true;
+
+    case 'stats':
+      displayTaskStats(taskTracker.getStatistics());
+      return true;
+
+    case 'clear':
+      const confirmClear = await confirmAction(
+        'Are you sure you want to delete ALL tasks?'
+      );
+      if (confirmClear) {
+        await taskTracker.clearAllTasks();
+        displaySuccess('All tasks cleared');
+      }
+      return true;
+
+    default:
+      displayError(`Unknown task command: ${subCommand}`);
+      displayTaskHelp();
+      return true;
+  }
+}
+
+/**
+ * Find a task by partial ID match
+ * BEGINNER NOTE: This lets users type just the first few characters of an ID
+ *
+ * @param taskTracker - Task tracker instance
+ * @param partialId - Partial task ID (at least 4 characters)
+ * @returns The matching task, or undefined if not found
+ */
+function findTaskByPartialId(
+  taskTracker: TaskTracker,
+  partialId: string
+): ReturnType<TaskTracker['getTask']> {
+  // Try exact match first
+  const exactMatch = taskTracker.getTask(partialId);
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  // Try partial match
+  const allTasks = taskTracker.getAllTasks();
+  const matches = allTasks.filter((task) =>
+    task.id.toLowerCase().startsWith(partialId.toLowerCase())
+  );
+
+  if (matches.length === 1) {
+    return matches[0];
+  }
+
+  if (matches.length > 1) {
+    displayError(`Multiple tasks match "${partialId}". Please be more specific.`);
+    return undefined;
+  }
+
+  return undefined;
+}
+
+/**
  * Start an interactive chat session
  * BEGINNER NOTE: This is the main chat loop - it keeps running until the user exits
  *
  * @param agent - The agent to chat with
+ * @param taskTracker - Optional task tracker for task management
  */
-export async function startChatSession(agent: Agent): Promise<void> {
+export async function startChatSession(
+  agent: Agent,
+  taskTracker?: TaskTracker
+): Promise<void> {
   // Display welcome and help
   displayWelcome();
   displaySystemMessage('Welcome to the interactive chat! Type /help for commands.');
+  if (taskTracker) {
+    displaySystemMessage(`Task tracking enabled. ${taskTracker.getTaskCount()} task(s) loaded.`);
+  }
   displaySeparator();
 
   // Main chat loop
@@ -114,7 +329,7 @@ export async function startChatSession(agent: Agent): Promise<void> {
 
       // Check if it's a command
       if (isCommand(userMessage)) {
-        shouldContinue = await handleCommand(userMessage, agent);
+        shouldContinue = await handleCommand(userMessage, agent, taskTracker);
         continue;
       }
 

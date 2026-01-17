@@ -10,6 +10,8 @@
 import { logger } from './utils/logger.js';
 import { validateEnvironment } from './config/environment.js';
 import { createAgent } from './agent/Agent.js';
+import { createTaskTracker } from './agent/TaskTracker.js';
+import { createTaskPersistence } from './persistence/TaskPersistence.js';
 import { startChatSession } from './cli/commands.js';
 import { getErrorMessage } from './utils/errors.js';
 import { createCalculatorTool } from './tools/definitions/index.js';
@@ -42,9 +44,19 @@ async function main(): Promise<void> {
     );
     logger.success(`Agent created with ${agent.getAvailableTools().length} tool(s): ${agent.getAvailableTools().join(', ')}`);
 
+    // Create task tracker with persistence (Phase 5)
+    logger.info('Creating task tracker...');
+    const taskPersistence = createTaskPersistence('./data');
+    const taskTracker = createTaskTracker({
+      save: (tasks) => taskPersistence.save(tasks),
+      load: () => taskPersistence.load(),
+    });
+    await taskTracker.initialize();
+    logger.success(`Task tracker ready! ${taskTracker.getTaskCount()} task(s) loaded.`);
+
     // Start the interactive chat session
     logger.info('Starting interactive chat session...');
-    await startChatSession(agent);
+    await startChatSession(agent, taskTracker);
 
   } catch (error) {
     // Handle errors gracefully
