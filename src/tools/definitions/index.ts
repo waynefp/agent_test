@@ -10,7 +10,8 @@ export { BaseTool } from './BaseTool.js';
 
 // Export concrete tools
 export { CalculatorTool, createCalculatorTool } from './CalculatorTool.js';
+export { FileSystemTool, createFileSystemTool } from './FileSystemTool.js';
+export { TaskTool, createTaskTool } from './TaskTool.js';
 
 // Future tools will be exported here:
-// export { FileSystemTool, createFileSystemTool } from './FileSystemTool.js';
 // export { WebSearchTool, createWebSearchTool } from './WebSearchTool.js';

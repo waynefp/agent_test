@@ -14,7 +14,7 @@ import { createTaskTracker } from './agent/TaskTracker.js';
 import { createTaskPersistence } from './persistence/TaskPersistence.js';
 import { startChatSession } from './cli/commands.js';
 import { getErrorMessage } from './utils/errors.js';
-import { createCalculatorTool } from './tools/definitions/index.js';
+import { createCalculatorTool, createFileSystemTool, createTaskTool } from './tools/definitions/index.js';
 
 /**
  * Main function
@@ -27,10 +27,22 @@ async function main(): Promise<void> {
     validateEnvironment();
     logger.success('Environment configuration valid!');
 
+    // Create task tracker with persistence (needed for TaskTool)
+    logger.info('Creating task tracker...');
+    const taskPersistence = createTaskPersistence('./data');
+    const taskTracker = createTaskTracker({
+      save: (tasks) => taskPersistence.save(tasks),
+      load: () => taskPersistence.load(),
+    });
+    await taskTracker.initialize();
+    logger.success(`Task tracker ready! ${taskTracker.getTaskCount()} task(s) loaded.`);
+
     // Create tools
     logger.info('Creating tools...');
     const calculator = createCalculatorTool();
-    logger.success('Calculator tool created!');
+    const fileSystem = createFileSystemTool('./workspace');
+    const taskTool = createTaskTool(taskTracker);
+    logger.success('Tools created: calculator, file_system, task_manager');
 
     // Create the agent WITH TOOLS
     logger.info('Creating agent with tools...');
@@ -40,19 +52,9 @@ async function main(): Promise<void> {
         // temperature: 0.7,  // Lower = more focused, higher = more creative
         // maxTokens: 4096,   // Maximum length of responses
       },
-      [calculator]  // Pass the calculator tool
+      [calculator, fileSystem, taskTool]  // Pass all tools to the agent
     );
     logger.success(`Agent created with ${agent.getAvailableTools().length} tool(s): ${agent.getAvailableTools().join(', ')}`);
-
-    // Create task tracker with persistence (Phase 5)
-    logger.info('Creating task tracker...');
-    const taskPersistence = createTaskPersistence('./data');
-    const taskTracker = createTaskTracker({
-      save: (tasks) => taskPersistence.save(tasks),
-      load: () => taskPersistence.load(),
-    });
-    await taskTracker.initialize();
-    logger.success(`Task tracker ready! ${taskTracker.getTaskCount()} task(s) loaded.`);
 
     // Start the interactive chat session
     logger.info('Starting interactive chat session...');
