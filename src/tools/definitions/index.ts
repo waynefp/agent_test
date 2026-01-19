@@ -12,6 +12,7 @@ export { BaseTool } from './BaseTool.js';
 export { CalculatorTool, createCalculatorTool } from './CalculatorTool.js';
 export { FileSystemTool, createFileSystemTool } from './FileSystemTool.js';
 export { TaskTool, createTaskTool } from './TaskTool.js';
+export { WebSearchTool, createWebSearchTool } from './WebSearchTool.js';
 
 // Future tools will be exported here:
-// export { WebSearchTool, createWebSearchTool } from './WebSearchTool.js';
+// export { CodeRunnerTool, createCodeRunnerTool } from './CodeRunnerTool.js';
