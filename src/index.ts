@@ -12,6 +12,7 @@ import { validateEnvironment } from './config/environment.js';
 import { createAgent } from './agent/Agent.js';
 import { createTaskTracker } from './agent/TaskTracker.js';
 import { createTaskPersistence } from './persistence/TaskPersistence.js';
+import { createConversationPersistence } from './persistence/ConversationPersistence.js';
 import { startChatSession } from './cli/commands.js';
 import { getErrorMessage } from './utils/errors.js';
 import { createCalculatorTool, createFileSystemTool, createTaskTool, createWebSearchTool } from './tools/definitions/index.js';
@@ -26,6 +27,11 @@ async function main(): Promise<void> {
     logger.info('Validating environment configuration...');
     validateEnvironment();
     logger.success('Environment configuration valid!');
+
+    // Create conversation persistence
+    logger.info('Creating conversation persistence...');
+    const conversationPersistence = createConversationPersistence('./data');
+    logger.success('Conversation persistence ready!');
 
     // Create task tracker with persistence (needed for TaskTool)
     logger.info('Creating task tracker...');
@@ -59,7 +65,7 @@ async function main(): Promise<void> {
 
     // Start the interactive chat session
     logger.info('Starting interactive chat session...');
-    await startChatSession(agent, taskTracker);
+    await startChatSession(agent, taskTracker, conversationPersistence);
 
   } catch (error) {
     // Handle errors gracefully

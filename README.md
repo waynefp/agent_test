@@ -50,10 +50,15 @@ npm run test-agent
 - Claude can autonomously decide when to use tools
 - Multi-turn tool interactions
 
-**Phase 5: Task Tracking** 🔜 Next
+**Phase 5: Agent Tools & Capabilities** ✅ Complete
+- Four working tools: Calculator, FileSystem, TaskManager, WebSearch
 - TaskTracker class for managing tasks
-- Hierarchical task structure
 - Task persistence to JSON files
+
+**Phase 6: Conversation Persistence** ✅ Complete
+- Save and load conversations
+- ConversationPersistence class
+- CLI commands: /save, /load, /sessions, /delete-session
 
 ## 🎯 What This Project Does
 
@@ -154,9 +159,9 @@ This project follows an 8-phase learning path:
 2. **Core Agent** ✅ - Conversational AI with memory
 3. **Tool Foundation** ✅ - Create custom tools (BaseTool, CalculatorTool)
 4. **Tool Integration** ✅ - Agent autonomously uses tools (agentic loop)
-5. **Task Tracking** 🔜 - Track tasks and subtasks
-6. **Persistence** - Save/load conversations
-7. **Enhanced UX** - Better CLI experience
+5. **Agent Tools** ✅ - FileSystem, Task, WebSearch tools
+6. **Conversation Persistence** ✅ - Save/load conversations
+7. **Enhanced UX** 🔜 - Better CLI experience (next)
 8. **Testing & Docs** - Production-quality code
 
 ## 📚 Resources
@@ -175,6 +180,6 @@ ISC
 
 ---
 
-**Current Phase:** 4/8 Complete | **Next:** Task Tracking
+**Current Phase:** 6/8 Complete | **Next:** Enhanced CLI/UX
 
 For detailed progress and concepts learned, see [PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md)

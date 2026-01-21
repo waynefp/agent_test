@@ -1,6 +1,6 @@
 # Agent SDK Learning Project - Progress Summary
 
-**Last Updated:** Phase 5 In Progress - January 19, 2025
+**Last Updated:** Phase 5 Complete - January 21, 2026
 
 ## 📋 Table of Contents
 - [Project Purpose](#project-purpose)
@@ -55,7 +55,7 @@ Each feature is implemented as a **tool** that the agent decides when to use.
 
 **Your Role:** Beginner learning TypeScript/Node.js through hands-on development
 
-**Current Status:** ✅ Phase 1-4 Complete | 🔄 Phase 5 In Progress
+**Current Status:** ✅ Phase 1-5 Complete | 🔄 Phase 6 Starting
 
 **GitHub Repository:** https://github.com/waynefp/agent_test
 
@@ -481,8 +481,8 @@ executeManyParallel(toolCalls)     // Run in parallel
 
 ## 🛠️ Phase 5: Agent Tools & Capabilities
 
-**Started:** January 19, 2025
-**Status:** In Progress
+**Completed:** January 21, 2026
+**Status:** ✅ Complete
 **Goal:** Give the agent real-world capabilities through tools
 
 ### The Key Insight
@@ -849,20 +849,85 @@ const agent = createAgent({
 2. **Memory Tool** - Let the agent store and recall facts about you across sessions
 3. **Upgrade WebSearchTool** - Use a real search API (Brave, SerpAPI) for current information
 
+---
+
+## 💾 Phase 6: Conversation Persistence
+
+**Completed:** January 21, 2026
+**Status:** ✅ Complete
+**Goal:** Save and resume chat sessions
+
+### What We Built
+
+#### 1. ConversationPersistence Class (src/persistence/ConversationPersistence.ts)
+- **Purpose:** Save and load conversations to/from JSON files
+- **Features:**
+  - Save conversations to individual JSON files
+  - Load conversations by ID
+  - List all saved conversations with metadata
+  - Delete conversations
+  - Automatic directory creation
+
+**Key Methods:**
+```typescript
+save(conversation)           // Save a conversation to disk
+load(conversationId)         // Load a conversation by ID
+list()                       // List all saved conversations
+delete(conversationId)       // Delete a conversation
+exists(conversationId)       // Check if conversation exists
+```
+
+#### 2. Agent Conversation Management Methods
+Added to `src/agent/Agent.ts`:
+- `getConversation()` - Get the full conversation object
+- `setConversationTitle(title)` - Set a meaningful title
+- `loadConversation(conversation)` - Load a saved conversation
+
+#### 3. CLI Commands for Conversation Management
+Added to `src/cli/commands.ts`:
+- `/save [title]` - Save current conversation with optional title
+- `/load <id>` - Load a saved conversation
+- `/sessions` - List all saved conversations
+- `/delete-session <id>` - Delete a saved conversation
+
+### Key Files Created/Modified (Phase 6)
+```
+✅ src/persistence/ConversationPersistence.ts (new)
+✅ src/agent/Agent.ts (added getConversation, setConversationTitle, loadConversation)
+✅ src/cli/commands.ts (added conversation persistence commands)
+✅ src/cli/display.ts (updated help text)
+✅ src/index.ts (integrated ConversationPersistence)
+✅ EXECUTION_PLAN.md (new)
+```
+
+### What You Learned (Phase 6)
+
+**JSON Serialization:**
+- Converting complex types (Date, nested objects) to JSON
+- Handling Date serialization/deserialization with ISO strings
+- Versioning file formats for future migrations
+
+**File System Operations:**
+- Creating directories recursively
+- Reading/writing individual files
+- Listing files in a directory
+- Safe file deletion with confirmation
+
+**Session Management:**
+- Separating conversation data from application state
+- Loading state into a running application
+- Managing multiple conversation sessions
+- User confirmation for destructive operations
+
+**CLI UX Patterns:**
+- Listing items with metadata
+- Command arguments (required vs optional)
+- Confirmation prompts for data loss
+- Clear success/error messaging
+
+---
+
 ### Future Phases
-
-#### Phase 6: Conversation Persistence
-**Goal:** Save and load chat sessions
-
-**What We'll Build:**
-- Save conversations to JSON files
-- Load and resume previous sessions
-- List saved conversations
-
-**What You'll Learn:**
-- JSON serialization with complex types
-- File system operations for persistence
-- Session management patterns
 
 #### Phase 7: Enhanced CLI & UX
 **Goal:** Professional user experience
@@ -902,8 +967,8 @@ const agent = createAgent({
 | Phase 2: Core Agent | ✅ Complete | Jan 14, 2025 | Working conversational agent |
 | Phase 3: Tool Foundation | ✅ Complete | Jan 15, 2025 | BaseTool, CalculatorTool, ToolRegistry |
 | Phase 4: Tool Integration | ✅ Complete | Jan 15, 2025 | Agentic loop, ToolExecutor |
-| Phase 5: Agent Tools | 🔄 In Progress | Jan 19, 2025 | FileSystem, Task, WebSearch tools |
-| Phase 6: Persistence | ⏳ Pending | - | Save/load conversations |
+| Phase 5: Agent Tools | ✅ Complete | Jan 21, 2026 | FileSystem, Task, WebSearch tools |
+| Phase 6: Conversation Persistence | ✅ Complete | Jan 21, 2026 | Save/load conversations |
 | Phase 7: Enhanced UX | ⏳ Pending | - | Better CLI experience |
 | Phase 8: Testing & Docs | ⏳ Pending | - | Tests, documentation |
 
@@ -1004,5 +1069,5 @@ A: Separation of concerns. Each file has one job, making code easier to understa
 
 ---
 
-**Last Updated:** Phase 5 In Progress - January 19, 2025
+**Last Updated:** Phase 5 Complete - January 21, 2026
 **Next Update:** After Phase 5 complete or Phase 6 begins

@@ -334,6 +334,51 @@ export class Agent {
   }
 
   /**
+   * Get the full conversation object
+   * BEGINNER NOTE: Returns the complete conversation with all metadata
+   */
+  getConversation(): import('../types/conversation.types.js').Conversation {
+    return this.conversationManager.getConversation();
+  }
+
+  /**
+   * Set the conversation title
+   * BEGINNER NOTE: Give your conversation a meaningful name
+   *
+   * @param title - The title for the conversation
+   */
+  setConversationTitle(title: string): void {
+    this.conversationManager.setTitle(title);
+    logger.info(`Conversation title set: ${title}`);
+  }
+
+  /**
+   * Load a conversation
+   * BEGINNER NOTE: Replace the current conversation with a saved one
+   *
+   * @param conversation - The conversation to load
+   */
+  loadConversation(conversation: import('../types/conversation.types.js').Conversation): void {
+    // Create a new conversation manager with the loaded conversation
+    this.conversationManager = createConversationManager({
+      id: conversation.id,
+      title: conversation.title,
+      metadata: conversation.metadata,
+    });
+
+    // Add all messages from the loaded conversation
+    for (const message of conversation.messages) {
+      this.conversationManager.addMessage(message.role, message.content);
+    }
+
+    // Update state
+    this.state.currentConversationId = conversation.id;
+    this.state.messageCount = conversation.messages.length;
+
+    logger.info(`Conversation loaded: ${conversation.id} (${conversation.messages.length} messages)`);
+  }
+
+  /**
    * Get the agent's current state
    */
   getState(): AgentState {
