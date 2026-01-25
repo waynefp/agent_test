@@ -35,6 +35,10 @@ export function displayHelp(): void {
   console.log(chalk.cyan('  /clear') + '     - Clear conversation history');
   console.log(chalk.cyan('  /history') + '   - Show conversation history');
   console.log(chalk.cyan('  /stats') + '     - Show agent statistics');
+  console.log(chalk.cyan('  /context') + '   - Show context window usage');
+  console.log(chalk.cyan('  /save') + '      - Save current conversation');
+  console.log(chalk.cyan('  /load') + '      - Load a saved conversation');
+  console.log(chalk.cyan('  /sessions') + '  - List saved conversations');
   console.log(chalk.cyan('  /personas') + '  - List available personas');
   console.log(chalk.cyan('  /persona') + '   - Show/change agent persona');
   console.log(chalk.cyan('  /exit') + '      - Exit the chat');

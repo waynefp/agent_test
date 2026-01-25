@@ -138,6 +138,29 @@ async function handleCommand(
     case '/persona':
       return handlePersonaCommand(args, agent);
 
+    // ============================================
+    // Context Commands (Phase 8)
+    // ============================================
+
+    case '/context':
+      return handleContextCommand(args, agent);
+
+    // ============================================
+    // Session Commands (Phase 9)
+    // ============================================
+
+    case '/save':
+      return await handleSaveCommand(args, agent);
+
+    case '/load':
+      return await handleLoadCommand(args, agent);
+
+    case '/sessions':
+      return await handleSessionsCommand(agent);
+
+    case '/session':
+      return await handleSessionCommand(args, agent);
+
     default:
       displayError(`Unknown command: ${cmd}`);
       displaySystemMessage('Type /help to see available commands');
@@ -376,6 +399,302 @@ function handlePersonaCommand(args: string[], agent: Agent): boolean {
   }
 
   return true;
+}
+
+/**
+ * Handle context subcommands
+ * BEGINNER NOTE: This handles commands like /context, /context trim, etc.
+ *
+ * @param args - Command arguments
+ * @param agent - Agent instance
+ * @returns true to continue chat loop
+ */
+function handleContextCommand(args: string[], agent: Agent): boolean {
+  // No args - show current context status
+  if (args.length === 0) {
+    displayContextStats(agent);
+    return true;
+  }
+
+  const subCommand = args[0].toLowerCase();
+
+  switch (subCommand) {
+    case 'help':
+      displayContextHelp();
+      return true;
+
+    case 'trim':
+      // Force context trimming
+      const trimResult = agent.trimContext();
+      if (trimResult instanceof Promise) {
+        trimResult.then((result) => {
+          if (result.messagesRemoved > 0) {
+            displaySuccess(`Trimmed ${result.messagesRemoved} messages, freed ~${result.tokensFreed} tokens`);
+          } else {
+            displaySystemMessage('No trimming needed - context is within limits');
+          }
+        });
+      }
+      return true;
+
+    case 'config':
+      // Show current context configuration
+      const config = agent.getContextConfig();
+      displaySystemMessage('Context Configuration:');
+      displaySystemMessage(`  Strategy: ${config.strategy}`);
+      displaySystemMessage(`  Max Tokens: ${config.maxContextTokens.toLocaleString()}`);
+      displaySystemMessage(`  Warning at: ${Math.round(config.warningThreshold * 100)}%`);
+      displaySystemMessage(`  Action at: ${Math.round(config.actionThreshold * 100)}%`);
+      displaySystemMessage(`  Keep recent: ${config.keepRecentMessages} messages`);
+      return true;
+
+    case 'strategy':
+      // Change strategy
+      if (args.length < 2) {
+        displayError('Please specify a strategy: none, sliding_window, or summarize');
+        return true;
+      }
+      const strategy = args[1].toLowerCase();
+      if (!['none', 'sliding_window', 'summarize'].includes(strategy)) {
+        displayError('Invalid strategy. Use: none, sliding_window, or summarize');
+        return true;
+      }
+      agent.configureContext({ strategy: strategy as 'none' | 'sliding_window' | 'summarize' });
+      displaySuccess(`Context strategy changed to: ${strategy}`);
+      return true;
+
+    default:
+      displayError(`Unknown context command: ${subCommand}`);
+      displayContextHelp();
+      return true;
+  }
+}
+
+/**
+ * Display context statistics
+ */
+function displayContextStats(agent: Agent): void {
+  const stats = agent.getContextStats();
+  const config = agent.getContextConfig();
+  const percent = Math.round(stats.percentUsed * 100);
+
+  displaySeparator();
+  displaySystemMessage('📊 Context Window Status');
+  displaySeparator();
+
+  // Usage bar visualization
+  const barLength = 30;
+  const filled = Math.round(barLength * stats.percentUsed);
+  const bar = '█'.repeat(filled) + '░'.repeat(barLength - filled);
+
+  let statusColor = '🟢'; // Green
+  if (stats.needsAction) {
+    statusColor = '🔴'; // Red
+  } else if (stats.isWarning) {
+    statusColor = '🟡'; // Yellow
+  }
+
+  displaySystemMessage(`${statusColor} [${bar}] ${percent}%`);
+  displaySystemMessage('');
+  displaySystemMessage(`Tokens: ${stats.estimatedTotal.toLocaleString()} / ${config.maxContextTokens.toLocaleString()}`);
+  displaySystemMessage(`Remaining: ~${stats.remaining.toLocaleString()} tokens`);
+  displaySystemMessage(`Messages: ${stats.messageCount}`);
+  displaySystemMessage(`Avg per message: ~${stats.avgTokensPerMessage} tokens`);
+  displaySystemMessage(`Strategy: ${config.strategy}`);
+
+  if (stats.needsAction) {
+    displayError('⚠️  Context limit reached! Messages will be trimmed on next API call.');
+  } else if (stats.isWarning) {
+    displaySystemMessage('⚡ Approaching context limit - consider using /clear or /context trim');
+  }
+
+  // Show summary if exists
+  const summary = agent.getContextSummary();
+  if (summary) {
+    displaySystemMessage('');
+    displaySystemMessage('📝 Earlier conversation summary:');
+    displaySystemMessage(`   ${summary}`);
+  }
+
+  displaySeparator();
+}
+
+/**
+ * Display context command help
+ */
+function displayContextHelp(): void {
+  displaySeparator();
+  displaySystemMessage('📚 Context Commands');
+  displaySeparator();
+  displaySystemMessage('/context              Show context window usage');
+  displaySystemMessage('/context help         Show this help');
+  displaySystemMessage('/context config       Show context configuration');
+  displaySystemMessage('/context trim         Force trim old messages');
+  displaySystemMessage('/context strategy <s> Change strategy (none, sliding_window, summarize)');
+  displaySeparator();
+}
+
+// ============================================
+// Session Command Handlers (Phase 9)
+// ============================================
+
+/**
+ * Handle /save command
+ * BEGINNER NOTE: Saves the current conversation to disk
+ */
+async function handleSaveCommand(args: string[], agent: Agent): Promise<boolean> {
+  // Optional title from args
+  const title = args.length > 0 ? args.join(' ') : undefined;
+
+  const result = await agent.saveConversation(title);
+
+  if (result.success) {
+    displaySuccess(`Conversation saved!`);
+    displaySystemMessage(`ID: ${agent.getConversationId()}`);
+    displaySystemMessage(`File: ${result.filePath}`);
+  } else {
+    displayError(`Failed to save: ${result.error}`);
+  }
+
+  return true;
+}
+
+/**
+ * Handle /load command
+ * BEGINNER NOTE: Loads a previously saved conversation
+ */
+async function handleLoadCommand(args: string[], agent: Agent): Promise<boolean> {
+  if (args.length === 0) {
+    displayError('Please provide a conversation ID');
+    displaySystemMessage('Usage: /load <conversation-id>');
+    displaySystemMessage('Use /sessions to see available conversations');
+    return true;
+  }
+
+  const conversationId = args[0];
+  const result = await agent.loadConversation(conversationId);
+
+  if (result.success) {
+    displaySuccess(`Conversation loaded: ${agent.getConversationTitle()}`);
+    displaySystemMessage(`Messages: ${agent.getState().messageCount}`);
+    displaySystemMessage('Use /history to see the conversation');
+  } else {
+    displayError(`Failed to load: ${result.error}`);
+  }
+
+  return true;
+}
+
+/**
+ * Handle /sessions command
+ * BEGINNER NOTE: Lists all saved conversations
+ */
+async function handleSessionsCommand(agent: Agent): Promise<boolean> {
+  const sessions = await agent.listSavedConversations();
+
+  if (sessions.length === 0) {
+    displaySystemMessage('No saved conversations found.');
+    displaySystemMessage('Use /save to save the current conversation.');
+    return true;
+  }
+
+  displaySeparator();
+  displaySystemMessage('💾 Saved Conversations');
+  displaySeparator();
+
+  for (const session of sessions) {
+    const date = session.updatedAt.toLocaleDateString();
+    const time = session.updatedAt.toLocaleTimeString();
+    const shortId = session.id.substring(0, 8);
+
+    displaySystemMessage(`[${shortId}] ${session.title}`);
+    displaySystemMessage(`   ${session.messageCount} messages | ${date} ${time}`);
+    displaySystemMessage(`   ${session.previewText}`);
+    displaySystemMessage('');
+  }
+
+  displaySeparator();
+  displaySystemMessage('Use /load <id> to load a conversation');
+  displaySystemMessage('Use /session delete <id> to delete');
+
+  return true;
+}
+
+/**
+ * Handle /session subcommands
+ */
+async function handleSessionCommand(args: string[], agent: Agent): Promise<boolean> {
+  if (args.length === 0) {
+    displaySessionHelp();
+    return true;
+  }
+
+  const subCommand = args[0].toLowerCase();
+
+  switch (subCommand) {
+    case 'help':
+      displaySessionHelp();
+      return true;
+
+    case 'info':
+      // Show current session info
+      displaySeparator();
+      displaySystemMessage('📋 Current Session');
+      displaySeparator();
+      displaySystemMessage(`ID: ${agent.getConversationId()}`);
+      displaySystemMessage(`Title: ${agent.getConversationTitle()}`);
+      displaySystemMessage(`Messages: ${agent.getState().messageCount}`);
+      displaySystemMessage(`Tokens used: ${agent.getTokenUsage().total}`);
+      displaySeparator();
+      return true;
+
+    case 'title':
+      if (args.length < 2) {
+        displayError('Please provide a title');
+        displaySystemMessage('Usage: /session title <new title>');
+        return true;
+      }
+      const newTitle = args.slice(1).join(' ');
+      agent.setConversationTitle(newTitle);
+      displaySuccess(`Title set to: ${newTitle}`);
+      return true;
+
+    case 'delete':
+      if (args.length < 2) {
+        displayError('Please provide a conversation ID');
+        displaySystemMessage('Usage: /session delete <id>');
+        return true;
+      }
+      const deleteId = args[1];
+      const deleted = await agent.deleteSavedConversation(deleteId);
+      if (deleted) {
+        displaySuccess(`Conversation deleted: ${deleteId}`);
+      } else {
+        displayError(`Conversation not found: ${deleteId}`);
+      }
+      return true;
+
+    default:
+      displayError(`Unknown session command: ${subCommand}`);
+      displaySessionHelp();
+      return true;
+  }
+}
+
+/**
+ * Display session command help
+ */
+function displaySessionHelp(): void {
+  displaySeparator();
+  displaySystemMessage('📚 Session Commands');
+  displaySeparator();
+  displaySystemMessage('/save [title]         Save current conversation');
+  displaySystemMessage('/load <id>            Load a saved conversation');
+  displaySystemMessage('/sessions             List all saved conversations');
+  displaySystemMessage('/session info         Show current session info');
+  displaySystemMessage('/session title <t>    Set conversation title');
+  displaySystemMessage('/session delete <id>  Delete a saved conversation');
+  displaySeparator();
 }
 
 /**

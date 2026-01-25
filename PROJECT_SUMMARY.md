@@ -1,6 +1,6 @@
 # Agent SDK Learning Project - Progress Summary
 
-**Last Updated:** Phase 7 Complete - January 23, 2025
+**Last Updated:** Phase 9 Complete - January 25, 2025
 
 ## 📋 Table of Contents
 - [Project Purpose](#project-purpose)
@@ -35,9 +35,9 @@ This project follows a structured 12-phase learning journey for building AI agen
 | 5 | Tool Completion | ✅ Complete | Polish tools, design patterns, security |
 | 6 | Streaming | ✅ Complete | Real-time responses, SSE, async patterns |
 | 7 | System Prompts | ✅ Complete | Agent behavior, prompt engineering |
-| 8 | Context Management | 🔄 Current | Token limits, summarization, cost optimization |
-| 9 | Persistence | ⏳ Pending | Save/load conversations, session management |
-| 10 | Memory & Web Search | ⏳ Pending | Long-term memory, external APIs |
+| 8 | Context Management | ✅ Complete | Token limits, summarization, cost optimization |
+| 9 | Persistence | ✅ Complete | Save/load conversations, session management |
+| 10 | Memory & Web Search | 🔄 Current | Long-term memory, external APIs |
 | 11 | Production Readiness | ⏳ Pending | Error handling, retries, testing |
 | 12 | Vision & Multi-modal | ⏳ Pending | Image processing, multi-modal inputs |
 
@@ -85,7 +85,7 @@ Each feature is implemented as a **tool** that the agent decides when to use.
 
 **Your Role:** Beginner learning TypeScript/Node.js through hands-on development
 
-**Current Status:** ✅ Phase 1-7 Complete | 🔄 Phase 8 (Context Management) Next
+**Current Status:** ✅ Phase 1-9 Complete | 🔄 Phase 10 (Memory & Web Search) Next
 
 **GitHub Repository:** https://github.com/waynefp/agent_test
 
@@ -734,6 +734,145 @@ interface StreamCallbacks {
 
 ---
 
+## 📊 Phase 8: Context Window Management
+
+**Started:** January 25, 2025
+**Status:** Complete
+**Goal:** Handle long conversations by managing the context window
+
+### Learning Objectives
+
+- Understanding the context window and its limits
+- Token counting and estimation
+- Strategies for managing long conversations
+- Cost optimization through context management
+
+### What We Built
+
+#### 1. ContextManager Class (`src/agent/ContextManager.ts`)
+- Token estimation (~4 chars per token heuristic)
+- Token statistics tracking
+- Configurable thresholds (warning, action)
+- Multiple context strategies
+
+#### 2. Context Strategies
+- **None** - No management, let API error if too large
+- **Sliding Window** - Remove oldest messages when approaching limit
+- **Summarize** - Create summary of removed messages for reference
+
+#### 3. Agent Integration
+- Automatic context check before each API call
+- Automatic trimming when threshold reached
+- Context statistics and status methods
+
+#### 4. CLI Commands
+- `/context` - Show context window usage and stats
+- `/context config` - Show context configuration
+- `/context trim` - Force trim old messages
+- `/context strategy <name>` - Change context strategy
+
+### Configuration Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `maxContextTokens` | 190,000 | Max tokens (below model limit) |
+| `strategy` | `sliding_window` | How to handle full context |
+| `warningThreshold` | 0.7 | Show warning at 70% |
+| `actionThreshold` | 0.85 | Take action at 85% |
+| `keepRecentMessages` | 10 | Always keep recent N messages |
+| `targetAfterTrim` | 0.5 | Target 50% after trimming |
+
+### Key Files (Phase 8)
+```
+✅ src/agent/ContextManager.ts (new - context management)
+✅ src/agent/ConversationManager.ts (updated - setMessages, prependContext)
+✅ src/agent/Agent.ts (updated - context integration)
+✅ src/cli/commands.ts (updated - context commands)
+✅ src/cli/display.ts (updated - help text)
+✅ learning/07-context-management.md (new - learning guide)
+```
+
+### What You Learned (Phase 8)
+
+**Context Window:**
+- Understanding token limits (200k for Claude Sonnet)
+- Why context management matters (cost, speed, API limits)
+- Token estimation techniques
+
+**Strategies:**
+- Sliding window - simple, loses old context
+- Summarization - preserves some context
+- Trade-offs between strategies
+
+**Integration Patterns:**
+- Automatic checks before API calls
+- Graceful degradation when limits approached
+- User feedback (warnings, stats)
+
+---
+
+## 💾 Phase 9: Persistence
+
+**Started:** January 25, 2025
+**Status:** Complete
+**Goal:** Save and resume conversations
+
+### Learning Objectives
+
+- Saving and loading conversations to disk
+- JSON serialization and Date handling
+- Session management patterns
+- File system operations in Node.js
+
+### What We Built
+
+#### 1. ConversationPersistence Class (`src/persistence/ConversationPersistence.ts`)
+- Save conversations to JSON files
+- Load conversations and restore Date objects
+- List all saved conversations with metadata
+- Delete saved conversations
+
+#### 2. Agent Integration
+- `saveConversation(title?)` - Save current conversation
+- `loadConversation(id)` - Load a saved conversation
+- `listSavedConversations()` - List all saved conversations
+- `deleteSavedConversation(id)` - Delete a saved conversation
+
+#### 3. CLI Commands
+- `/save [title]` - Save current conversation
+- `/load <id>` - Load a saved conversation
+- `/sessions` - List all saved conversations
+- `/session info` - Show current session info
+- `/session title <t>` - Set conversation title
+- `/session delete <id>` - Delete a saved conversation
+
+### Key Files (Phase 9)
+```
+✅ src/persistence/ConversationPersistence.ts (new)
+✅ src/agent/Agent.ts (updated - persistence methods)
+✅ src/cli/commands.ts (updated - session commands)
+✅ src/cli/display.ts (updated - help text)
+✅ learning/08-persistence.md (new - learning guide)
+```
+
+### What You Learned (Phase 9)
+
+**Persistence:**
+- JSON serialization/deserialization
+- Date object restoration from JSON
+- File system operations with fs/promises
+
+**Session Management:**
+- Listing and browsing saved sessions
+- Title generation from content
+- Preview text for quick identification
+
+**Security:**
+- Path sanitization to prevent traversal attacks
+- Safe file naming conventions
+
+---
+
 ## 📁 File Structure (Detailed)
 
 ### Source Code (src/)
@@ -747,10 +886,12 @@ src/
 ├── agent/                        # Agent logic
 │   ├── Agent.ts                  # Core agent class (with agentic loop)
 │   ├── ConversationManager.ts    # Message history management
+│   ├── ContextManager.ts         # Context window management (Phase 8)
 │   └── TaskTracker.ts            # Task management (Phase 5)
 │
-├── persistence/                  # Data persistence (Phase 5)
-│   └── TaskPersistence.ts        # JSON file storage for tasks
+├── persistence/                  # Data persistence
+│   ├── TaskPersistence.ts        # JSON file storage for tasks (Phase 5)
+│   └── ConversationPersistence.ts # Conversation save/load (Phase 9)
 │
 ├── tools/                        # Tool system ✅
 │   ├── ToolRegistry.ts           # Tool management
@@ -1144,6 +1285,10 @@ A separate **Learning Guide** has been created to serve as a standalone referenc
 | `02-core-agent.md` | Anthropic API, conversations |
 | `03-tool-system.md` | Tool architecture, Zod, registry |
 | `04-agentic-loop.md` | Autonomous tool use, the loop |
+| `05-streaming.md` | Streaming API, real-time responses |
+| `06-system-prompts.md` | Prompt engineering, personas |
+| `07-context-management.md` | Token limits, context strategies |
+| `08-persistence.md` | Save/load conversations, sessions |
 
 Each file includes:
 - Explanations of concepts
@@ -1166,8 +1311,8 @@ Each file includes:
 | Phase 5: Tool Completion | ✅ Complete | Jan 19-23, 2025 | FileSystem, Task tools (polished) |
 | Phase 6: Streaming | ✅ Complete | Jan 23, 2025 | Real-time responses |
 | Phase 7: System Prompts | ✅ Complete | Jan 23, 2025 | Agent behavior customization |
-| Phase 8: Context Management | 🔄 In Progress | - | Token limits, summarization |
-| Phase 9: Persistence | ⏳ Pending | - | Save/load conversations |
+| Phase 8: Context Management | ✅ Complete | Jan 25, 2025 | Token limits, context strategies |
+| Phase 9: Persistence | ✅ Complete | Jan 25, 2025 | Save/load conversations |
 | Phase 10: Memory & Web | ⏳ Pending | - | Long-term memory, web search |
 | Phase 11: Production | ⏳ Pending | - | Error handling, testing |
 | Phase 12: Vision | ⏳ Pending | - | Multi-modal, images |
@@ -1269,6 +1414,6 @@ A: Separation of concerns. Each file has one job, making code easier to understa
 
 ---
 
-**Last Updated:** Phase 7 (System Prompts) Complete - January 23, 2025
-**Next Update:** After Phase 8 begins or completes
+**Last Updated:** Phase 9 (Persistence) Complete - January 25, 2025
+**Next Update:** After Phase 10 begins or completes
 **Learning Guide:** See `learning/` folder for standalone reference materials

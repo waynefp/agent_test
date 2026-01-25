@@ -16,8 +16,8 @@
 | [04-agentic-loop.md](./04-agentic-loop.md) | Agentic Loop | Autonomous tool use, the loop pattern |
 | [05-streaming.md](./05-streaming.md) | Streaming | Real-time responses, SSE, async iteration |
 | [06-system-prompts.md](./06-system-prompts.md) | System Prompts | Agent behavior, personas, prompt engineering |
-| *07-context-management.md* | Context Management | Token limits, summarization *(Coming in Phase 8)* |
-| *08-persistence.md* | Persistence | Save/load conversations *(Coming in Phase 9)* |
+| [07-context-management.md](./07-context-management.md) | Context Management | Token limits, context strategies, cost optimization |
+| [08-persistence.md](./08-persistence.md) | Persistence | Save/load conversations, session management |
 | *09-memory.md* | Memory & Web | Long-term memory, web search *(Coming in Phase 10)* |
 | *10-production.md* | Production | Error handling, testing *(Coming in Phase 11)* |
 | *11-vision.md* | Vision | Multi-modal, images *(Coming in Phase 12)* |
@@ -66,7 +66,8 @@ An **agent** is an AI that can:
 | **Agentic Loop** | Autonomous decision-making | [04-agentic-loop.md](./04-agentic-loop.md) |
 | **Stop Reason** | Why Claude stopped responding | [04-agentic-loop.md](./04-agentic-loop.md) |
 | **Streaming** | Real-time responses | [05-streaming.md](./05-streaming.md) |
-| **Context Window** | Token limit management | *07-context-management.md (coming)* |
+| **Personas** | Agent behavior presets | [06-system-prompts.md](./06-system-prompts.md) |
+| **Context Window** | Token limit management | [07-context-management.md](./07-context-management.md) |
 
 ---
 

@@ -186,6 +186,48 @@ export class ConversationManager {
   }
 
   /**
+   * Replace all messages with a new set
+   * BEGINNER NOTE: Used by context management when trimming old messages
+   *
+   * @param messages - New messages to use
+   */
+  setMessages(messages: Message[]): void {
+    this.conversation.messages = messages;
+    this.conversation.updatedAt = new Date();
+
+    if (this.conversation.metadata) {
+      this.conversation.metadata.messageCount = messages.length;
+    }
+
+    logger.debug(`Replaced messages in conversation ${this.conversation.id}, now ${messages.length} messages`);
+  }
+
+  /**
+   * Prepend a system context message
+   * BEGINNER NOTE: Used to add summarized context from trimmed messages
+   *
+   * @param text - The context/summary text to prepend
+   */
+  prependContext(text: string): void {
+    const contextMessage: Message = {
+      role: 'user',
+      content: [{ type: 'text', text }],
+      timestamp: new Date(),
+      id: randomUUID(),
+    };
+
+    // Insert at the beginning
+    this.conversation.messages.unshift(contextMessage);
+    this.conversation.updatedAt = new Date();
+
+    if (this.conversation.metadata) {
+      this.conversation.metadata.messageCount = this.conversation.messages.length;
+    }
+
+    logger.debug('Prepended context message to conversation');
+  }
+
+  /**
    * Get message count
    */
   getMessageCount(): number {

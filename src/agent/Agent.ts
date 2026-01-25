@@ -25,6 +25,20 @@ import {
 } from '../config/personas.js';
 import { createToolRegistry, ToolRegistry } from '../tools/ToolRegistry.js';
 import { createToolExecutor, ToolExecutor } from '../tools/ToolExecutor.js';
+import {
+  ContextManager,
+  createContextManager,
+  type ContextManagerConfig,
+  type TokenStats,
+  type ContextActionResult,
+} from './ContextManager.js';
+import {
+  ConversationPersistence,
+  createConversationPersistence,
+  type ConversationMetadata,
+  type SaveResult,
+  type LoadResult,
+} from '../persistence/ConversationPersistence.js';
 import type { ITool } from '../types/tool.types.js';
 import type { AgentConfig, ChatOptions, AgentState, StreamCallbacks } from '../types/agent.types.js';
 import type { Message, ToolUseContent } from '../types/conversation.types.js';
@@ -40,9 +54,12 @@ export class Agent {
   private conversationManager: ConversationManager;
   private toolRegistry: ToolRegistry;
   private toolExecutor: ToolExecutor;
+  private contextManager: ContextManager;
+  private conversationPersistence: ConversationPersistence;
   private config: AgentConfig;
   private state: AgentState;
   private currentPersona: Persona;
+  private contextSummary: string | null = null; // Holds summary from trimmed messages
 
   /**
    * Create a new Agent
@@ -57,6 +74,12 @@ export class Agent {
     // Initialize tool system
     this.toolRegistry = createToolRegistry();
     this.toolExecutor = createToolExecutor(this.toolRegistry);
+
+    // Initialize context manager (Phase 8)
+    this.contextManager = createContextManager();
+
+    // Initialize conversation persistence (Phase 9)
+    this.conversationPersistence = createConversationPersistence();
 
     // Register provided tools
     if (tools && tools.length > 0) {
@@ -181,6 +204,9 @@ export class Agent {
     while (turnCount < maxTurns) {
       turnCount++;
       logger.debug(`Agentic loop turn ${turnCount}/${maxTurns}`);
+
+      // Check and apply context management (Phase 8)
+      await this.manageContextIfNeeded();
 
       // Get conversation history
       const messages = this.conversationManager.toAnthropicFormat();
@@ -489,6 +515,9 @@ export class Agent {
       turnCount++;
       logger.debug(`Streaming agentic loop turn ${turnCount}/${maxTurns}`);
 
+      // Check and apply context management (Phase 8)
+      await this.manageContextIfNeeded();
+
       // Get conversation history
       const messages = this.conversationManager.toAnthropicFormat();
 
@@ -627,6 +656,105 @@ export class Agent {
   }
 
   // ============================================
+  // Context Management Methods (Phase 8)
+  // ============================================
+
+  /**
+   * Check and apply context management if needed
+   * BEGINNER NOTE: This runs before each API call to ensure we don't
+   * exceed the context window limit.
+   */
+  private async manageContextIfNeeded(): Promise<ContextActionResult | null> {
+    const messages = this.conversationManager.getMessages();
+    const stats = this.contextManager.getStats(messages);
+
+    // Log warning if approaching limit
+    if (stats.isWarning && !stats.needsAction) {
+      logger.warn(`Context usage: ${Math.round(stats.percentUsed * 100)}% - approaching limit`);
+    }
+
+    // Apply strategy if action is needed
+    if (stats.needsAction) {
+      logger.info('Context limit reached, applying management strategy...');
+
+      const { messages: trimmedMessages, result, summary } = this.contextManager.applyStrategy(messages);
+
+      // Update conversation with trimmed messages
+      this.conversationManager.setMessages(trimmedMessages);
+
+      // Store summary if one was generated
+      if (summary) {
+        this.contextSummary = summary;
+        logger.info(`Context summary: ${summary}`);
+      }
+
+      logger.success(`Context managed: ${result.messagesRemoved} messages removed, ~${result.tokensFreed} tokens freed`);
+      return result;
+    }
+
+    return null;
+  }
+
+  /**
+   * Get current context statistics
+   * BEGINNER NOTE: Shows how much of the context window is being used
+   */
+  getContextStats(): TokenStats {
+    const messages = this.conversationManager.getMessages();
+    return this.contextManager.getStats(messages);
+  }
+
+  /**
+   * Get human-readable context status
+   */
+  getContextStatus(): string {
+    const messages = this.conversationManager.getMessages();
+    return this.contextManager.getStatusString(messages);
+  }
+
+  /**
+   * Configure context management
+   * BEGINNER NOTE: Change how context is managed (strategy, thresholds, etc.)
+   *
+   * @param config - New context configuration
+   */
+  configureContext(config: Partial<ContextManagerConfig>): void {
+    this.contextManager.updateConfig(config);
+  }
+
+  /**
+   * Get context configuration
+   */
+  getContextConfig(): ContextManagerConfig {
+    return this.contextManager.getConfig();
+  }
+
+  /**
+   * Get the context summary (if messages were trimmed)
+   * BEGINNER NOTE: When old messages are removed, a summary is saved here
+   */
+  getContextSummary(): string | null {
+    return this.contextSummary;
+  }
+
+  /**
+   * Manually trigger context management
+   * BEGINNER NOTE: Force context trimming even if not at the threshold
+   */
+  async trimContext(): Promise<ContextActionResult> {
+    const messages = this.conversationManager.getMessages();
+    const { messages: trimmedMessages, result, summary } = this.contextManager.applyStrategy(messages);
+
+    this.conversationManager.setMessages(trimmedMessages);
+
+    if (summary) {
+      this.contextSummary = summary;
+    }
+
+    return result;
+  }
+
+  // ============================================
   // Persona Methods (Phase 7)
   // ============================================
 
@@ -695,6 +823,109 @@ export class Agent {
    */
   getSystemPrompt(): string {
     return this.config.systemPrompt || '';
+  }
+
+  // ============================================
+  // Persistence Methods (Phase 9)
+  // ============================================
+
+  /**
+   * Save the current conversation to disk
+   * BEGINNER NOTE: This preserves your conversation so you can resume it later
+   *
+   * @param title - Optional title for the conversation
+   * @returns Result of the save operation
+   */
+  async saveConversation(title?: string): Promise<SaveResult> {
+    const conversation = this.conversationManager.getConversation();
+    return this.conversationPersistence.save(conversation, {
+      title,
+      overwrite: true,
+    });
+  }
+
+  /**
+   * Load a conversation from disk
+   * BEGINNER NOTE: This restores a previously saved conversation
+   *
+   * @param conversationId - The ID of the conversation to load
+   * @returns Result of the load operation
+   */
+  async loadConversation(conversationId: string): Promise<LoadResult> {
+    const result = await this.conversationPersistence.load(conversationId);
+
+    if (result.success && result.conversation) {
+      // Replace current conversation with loaded one
+      this.conversationManager = createConversationManager({
+        id: result.conversation.id,
+        title: result.conversation.title,
+        metadata: result.conversation.metadata,
+      });
+
+      // Restore messages
+      this.conversationManager.setMessages(result.conversation.messages);
+
+      // Update state
+      this.state.currentConversationId = result.conversation.id;
+      this.state.messageCount = result.conversation.messages.length;
+
+      // Clear context summary since we're loading a new conversation
+      this.contextSummary = null;
+
+      logger.success(`Loaded conversation: ${result.conversation.title || conversationId}`);
+    }
+
+    return result;
+  }
+
+  /**
+   * List all saved conversations
+   *
+   * @returns Array of conversation metadata
+   */
+  async listSavedConversations(): Promise<ConversationMetadata[]> {
+    return this.conversationPersistence.list();
+  }
+
+  /**
+   * Delete a saved conversation
+   *
+   * @param conversationId - The ID of the conversation to delete
+   * @returns true if deleted, false if not found
+   */
+  async deleteSavedConversation(conversationId: string): Promise<boolean> {
+    return this.conversationPersistence.delete(conversationId);
+  }
+
+  /**
+   * Check if a conversation exists
+   *
+   * @param conversationId - The ID to check
+   * @returns true if exists
+   */
+  async conversationExists(conversationId: string): Promise<boolean> {
+    return this.conversationPersistence.exists(conversationId);
+  }
+
+  /**
+   * Get the current conversation ID
+   */
+  getConversationId(): string {
+    return this.state.currentConversationId || '';
+  }
+
+  /**
+   * Get the current conversation title
+   */
+  getConversationTitle(): string {
+    return this.conversationManager.getConversation().title || 'Untitled';
+  }
+
+  /**
+   * Set the conversation title
+   */
+  setConversationTitle(title: string): void {
+    this.conversationManager.setTitle(title);
   }
 }
 
