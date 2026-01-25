@@ -49,3 +49,4 @@ data/tasks/*.json
 .cache/
 tmpclaude-*
 nul
+workspace/

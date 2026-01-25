@@ -12,7 +12,6 @@ export { BaseTool } from './BaseTool.js';
 export { CalculatorTool, createCalculatorTool } from './CalculatorTool.js';
 export { FileSystemTool, createFileSystemTool } from './FileSystemTool.js';
 export { TaskTool, createTaskTool } from './TaskTool.js';
-export { WebSearchTool, createWebSearchTool } from './WebSearchTool.js';
 
 // Future tools will be exported here:
-// export { CodeRunnerTool, createCodeRunnerTool } from './CodeRunnerTool.js';
+// Web search will be added in Phase 10 with a proper API

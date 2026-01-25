@@ -16,10 +16,17 @@ import {
   createMessageParams,
   DEFAULT_AGENT_CONFIG,
 } from '../config/anthropic.config.js';
+import {
+  Persona,
+  getPersona,
+  buildSystemPrompt,
+  DEFAULT_PERSONA,
+  getPersonaIds,
+} from '../config/personas.js';
 import { createToolRegistry, ToolRegistry } from '../tools/ToolRegistry.js';
 import { createToolExecutor, ToolExecutor } from '../tools/ToolExecutor.js';
 import type { ITool } from '../types/tool.types.js';
-import type { AgentConfig, ChatOptions, AgentState } from '../types/agent.types.js';
+import type { AgentConfig, ChatOptions, AgentState, StreamCallbacks } from '../types/agent.types.js';
 import type { Message, ToolUseContent } from '../types/conversation.types.js';
 import { logger } from '../utils/logger.js';
 import { getErrorMessage } from '../utils/errors.js';
@@ -35,6 +42,7 @@ export class Agent {
   private toolExecutor: ToolExecutor;
   private config: AgentConfig;
   private state: AgentState;
+  private currentPersona: Persona;
 
   /**
    * Create a new Agent
@@ -54,6 +62,31 @@ export class Agent {
     if (tools && tools.length > 0) {
       this.toolRegistry.registerMany(tools);
       logger.info(`Registered ${tools.length} tool(s)`);
+    }
+
+    // Initialize persona (Phase 7)
+    // Check if a persona ID was provided in config, otherwise use default
+    if (this.config.systemPrompt) {
+      // If a custom system prompt was provided, create a custom persona
+      this.currentPersona = {
+        id: 'custom',
+        name: 'Custom',
+        description: 'Custom system prompt',
+        components: {
+          role: 'an AI assistant',
+          style: 'helpful',
+        },
+      };
+    } else {
+      // Use default persona
+      this.currentPersona = DEFAULT_PERSONA;
+      // Set the system prompt from the persona
+      this.config.systemPrompt = buildSystemPrompt(this.currentPersona.components);
+    }
+
+    // Apply recommended temperature from persona if not explicitly set
+    if (this.config.temperature === undefined && this.currentPersona.recommendedTemperature) {
+      this.config.temperature = this.currentPersona.recommendedTemperature;
     }
 
     // Initialize state
@@ -393,6 +426,187 @@ export class Agent {
   }
 
   /**
+   * Send a message and stream the response
+   * BEGINNER NOTE: This method shows the response as it's being generated,
+   * character by character, for a more interactive experience.
+   *
+   * @param userMessage - What the user wants to say
+   * @param callbacks - Functions to call as the response streams in
+   * @param options - Optional chat options
+   * @returns The complete response text
+   */
+  async chatStream(
+    userMessage: string,
+    callbacks: StreamCallbacks,
+    options?: ChatOptions
+  ): Promise<string> {
+    try {
+      const startTime = Date.now();
+
+      // Add user message to conversation history
+      logger.info(`User: ${userMessage}`);
+      this.conversationManager.addTextMessage('user', userMessage);
+
+      // Run the streaming agentic loop
+      const finalResponse = await this.agenticLoopStreaming(callbacks, options);
+
+      // Update state
+      const responseTime = Date.now() - startTime;
+      this.state.lastActiveAt = new Date();
+
+      logger.success(`Total response time: ${responseTime}ms`);
+
+      // Call onComplete callback
+      callbacks.onComplete?.(finalResponse);
+
+      return finalResponse;
+    } catch (error) {
+      logger.error('Failed to get streaming response from Claude', error);
+      const err = error instanceof Error ? error : new Error(String(error));
+      callbacks.onError?.(err);
+      throw new Error(`Chat failed: ${getErrorMessage(error)}`);
+    }
+  }
+
+  /**
+   * The Streaming Agentic Loop
+   * BEGINNER NOTE: Same as the regular agentic loop, but streams the text response
+   * in real-time as Claude generates it.
+   *
+   * @param callbacks - Streaming callbacks
+   * @param options - Chat options
+   * @returns The final text response from Claude
+   */
+  private async agenticLoopStreaming(
+    callbacks: StreamCallbacks,
+    options?: ChatOptions
+  ): Promise<string> {
+    const maxTurns = options?.maxToolTurns || 10;
+    let turnCount = 0;
+    let fullText = '';
+
+    while (turnCount < maxTurns) {
+      turnCount++;
+      logger.debug(`Streaming agentic loop turn ${turnCount}/${maxTurns}`);
+
+      // Get conversation history
+      const messages = this.conversationManager.toAnthropicFormat();
+
+      // Prepare API request
+      const params: any = {
+        model: this.config.model,
+        max_tokens: this.config.maxTokens,
+        messages,
+      };
+
+      // Add system prompt
+      const systemPrompt = options?.systemPrompt || this.config.systemPrompt;
+      if (systemPrompt) {
+        params.system = systemPrompt;
+      }
+
+      // Add tools if enabled
+      if (this.config.enableTools && this.toolRegistry.getToolCount() > 0) {
+        params.tools = this.toolRegistry.toAnthropicFormat();
+        logger.debug(`Tools available: ${this.toolRegistry.getToolNames().join(', ')}`);
+      }
+
+      logger.agent('Starting streaming request to Claude API...');
+
+      // Create streaming request
+      const stream = this.client.messages.stream(params);
+
+      // Collect the response
+      let currentText = '';
+      const toolUseBlocks: ToolUseContent[] = [];
+      // Note: stopReason is tracked via finalMessage.stop_reason
+
+      // Process the stream
+      for await (const event of stream) {
+        if (event.type === 'content_block_start') {
+          if (event.content_block.type === 'tool_use') {
+            // Tool use starting
+            callbacks.onToolUse?.(event.content_block.name, event.content_block.id);
+            toolUseBlocks.push({
+              type: 'tool_use',
+              id: event.content_block.id,
+              name: event.content_block.name,
+              input: {},
+            });
+          }
+        } else if (event.type === 'content_block_delta') {
+          if (event.delta.type === 'text_delta') {
+            // Text chunk received
+            const text = event.delta.text;
+            currentText += text;
+            fullText += text;
+            callbacks.onText?.(text);
+          } else if (event.delta.type === 'input_json_delta') {
+            // Tool input being streamed
+            // We'll collect the full input from the final message
+          }
+        }
+        // Note: message_delta events contain stop_reason but we get it from finalMessage
+      }
+
+      // Get the final message for complete data
+      const finalMessage = await stream.finalMessage();
+
+      // Update token count
+      this.state.totalTokensUsed += finalMessage.usage.input_tokens + finalMessage.usage.output_tokens;
+      callbacks.onUsage?.(finalMessage.usage.input_tokens, finalMessage.usage.output_tokens);
+      logger.info(`Tokens used: ${finalMessage.usage.input_tokens} in, ${finalMessage.usage.output_tokens} out`);
+
+      // Add assistant's response to conversation
+      this.conversationManager.addAssistantResponse(finalMessage);
+      this.state.messageCount++;
+
+      // Check the stop reason
+      if (finalMessage.stop_reason === 'end_turn') {
+        logger.success('Claude finished (end_turn)');
+        return fullText;
+      }
+
+      if (finalMessage.stop_reason === 'tool_use') {
+        // Claude wants to use tools!
+        logger.info('Claude wants to use tools');
+
+        // Extract tool uses from the final message (for complete input data)
+        const toolUses = this.extractToolUses(finalMessage);
+
+        if (toolUses.length === 0) {
+          logger.warn('stop_reason was tool_use but no tools found');
+          return fullText;
+        }
+
+        // Execute all tools
+        for (const toolUse of toolUses) {
+          callbacks.onToolUse?.(toolUse.name, toolUse.id);
+          await this.executeAndAddToolResult(toolUse);
+          callbacks.onToolResult?.(toolUse.name, true);
+        }
+
+        // Reset text for next turn (tool results don't contribute to final text)
+        // Continue the loop - Claude will process the tool results
+        continue;
+      }
+
+      if (finalMessage.stop_reason === 'max_tokens') {
+        logger.warn('Response stopped due to max_tokens');
+        return fullText + '\n[Response truncated due to length]';
+      }
+
+      // For any other stop reason, return what we have
+      logger.info(`Response stopped: ${finalMessage.stop_reason}`);
+      return fullText;
+    }
+
+    // Max turns reached
+    logger.warn(`Agentic loop reached max turns (${maxTurns})`);
+    return fullText || 'Sorry, I reached the maximum number of tool uses for this conversation.';
+  }
+
+  /**
    * Get list of available tools
    */
   getAvailableTools(): string[] {
@@ -410,6 +624,77 @@ export class Agent {
       available: this.toolRegistry.getToolCount(),
       used: this.state.toolCallCount,
     };
+  }
+
+  // ============================================
+  // Persona Methods (Phase 7)
+  // ============================================
+
+  /**
+   * Get the current persona
+   */
+  getPersona(): Persona {
+    return this.currentPersona;
+  }
+
+  /**
+   * Set the agent's persona by ID
+   * BEGINNER NOTE: This changes the agent's "personality" and behavior
+   *
+   * @param personaId - The ID of the persona to use
+   * @returns true if persona was found and set, false otherwise
+   */
+  setPersona(personaId: string): boolean {
+    const persona = getPersona(personaId);
+    if (!persona) {
+      logger.warn(`Persona not found: ${personaId}`);
+      return false;
+    }
+
+    this.currentPersona = persona;
+    this.config.systemPrompt = buildSystemPrompt(persona.components);
+
+    // Optionally apply recommended temperature
+    if (persona.recommendedTemperature !== undefined) {
+      this.config.temperature = persona.recommendedTemperature;
+    }
+
+    logger.success(`Persona changed to: ${persona.name}`);
+    return true;
+  }
+
+  /**
+   * Set a custom system prompt
+   * BEGINNER NOTE: For advanced users who want full control over the prompt
+   *
+   * @param prompt - The system prompt to use
+   */
+  setSystemPrompt(prompt: string): void {
+    this.config.systemPrompt = prompt;
+    this.currentPersona = {
+      id: 'custom',
+      name: 'Custom',
+      description: 'Custom system prompt',
+      components: {
+        role: 'an AI assistant',
+        style: 'as specified',
+      },
+    };
+    logger.info('System prompt updated');
+  }
+
+  /**
+   * Get list of available persona IDs
+   */
+  getAvailablePersonas(): string[] {
+    return getPersonaIds();
+  }
+
+  /**
+   * Get the current system prompt
+   */
+  getSystemPrompt(): string {
+    return this.config.systemPrompt || '';
   }
 }
 

@@ -217,6 +217,30 @@ export interface ErrorEvent {
 export type AgentEventListener = (event: AgentEvent) => void;
 
 /**
+ * Callbacks for streaming responses
+ * BEGINNER NOTE: These functions are called as the response streams in
+ */
+export interface StreamCallbacks {
+  /** Called when a new text chunk arrives */
+  onText?: (text: string) => void;
+
+  /** Called when a tool is being used */
+  onToolUse?: (toolName: string, toolId: string) => void;
+
+  /** Called when a tool result is received */
+  onToolResult?: (toolName: string, success: boolean) => void;
+
+  /** Called when the response is complete */
+  onComplete?: (fullText: string) => void;
+
+  /** Called when an error occurs */
+  onError?: (error: Error) => void;
+
+  /** Called with token usage info at the end */
+  onUsage?: (inputTokens: number, outputTokens: number) => void;
+}
+
+/**
  * Error thrown when agent operations fail
  */
 export class AgentError extends Error {

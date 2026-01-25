@@ -8,6 +8,7 @@
 
 import chalk from 'chalk';
 import type { Task, TaskStatistics, TaskNode } from '../types/task.types.js';
+import type { Persona } from '../config/personas.js';
 
 /**
  * Display a welcome message
@@ -30,12 +31,13 @@ export function displayHelp(): void {
   console.log();
   console.log(chalk.bold.white('Available Commands:'));
   console.log();
-  console.log(chalk.cyan('  /help') + '     - Show this help message');
-  console.log(chalk.cyan('  /clear') + '    - Clear conversation history');
-  console.log(chalk.cyan('  /history') + '  - Show conversation history');
-  console.log(chalk.cyan('  /stats') + '    - Show agent statistics');
-  console.log(chalk.cyan('  /exit') + '     - Exit the chat');
-  console.log(chalk.cyan('  /quit') + '     - Exit the chat');
+  console.log(chalk.cyan('  /help') + '      - Show this help message');
+  console.log(chalk.cyan('  /clear') + '     - Clear conversation history');
+  console.log(chalk.cyan('  /history') + '   - Show conversation history');
+  console.log(chalk.cyan('  /stats') + '     - Show agent statistics');
+  console.log(chalk.cyan('  /personas') + '  - List available personas');
+  console.log(chalk.cyan('  /persona') + '   - Show/change agent persona');
+  console.log(chalk.cyan('  /exit') + '      - Exit the chat');
   console.log();
   console.log(chalk.gray('Just type your message and press Enter to chat!'));
   console.log();
@@ -144,6 +146,55 @@ export function displaySeparator(): void {
 export function displayThinking(): void {
   console.log();
   console.log(chalk.gray('  Thinking...'));
+}
+
+// ============================================
+// Streaming Display Functions (Phase 6)
+// ============================================
+
+/**
+ * Start streaming assistant output
+ * BEGINNER NOTE: Sets up the display for streaming text
+ */
+export function startStreamingResponse(): void {
+  console.log();
+  process.stdout.write(chalk.bold.green('Assistant: '));
+}
+
+/**
+ * Write a text chunk to the streaming output
+ * BEGINNER NOTE: Writes text without a newline, so chunks appear in sequence
+ */
+export function writeStreamChunk(text: string): void {
+  process.stdout.write(chalk.white(text));
+}
+
+/**
+ * End the streaming response
+ * BEGINNER NOTE: Adds final newlines after streaming is complete
+ */
+export function endStreamingResponse(): void {
+  console.log();
+  console.log();
+}
+
+/**
+ * Display a tool use notification during streaming
+ * BEGINNER NOTE: Shows when Claude is using a tool while streaming
+ */
+export function displayToolUseNotification(toolName: string): void {
+  console.log();
+  console.log(chalk.yellow(`  [Using tool: ${toolName}...]`));
+  process.stdout.write(chalk.bold.green('Assistant: '));
+}
+
+/**
+ * Display streaming error
+ */
+export function displayStreamError(error: Error): void {
+  console.log();
+  console.log(chalk.bold.red('✗ Streaming error: ') + chalk.red(error.message));
+  console.log();
 }
 
 /**
@@ -368,5 +419,95 @@ export function displayTaskHelp(): void {
   console.log(chalk.cyan('  /task clear') + '         - Delete all tasks');
   console.log();
   console.log(chalk.gray('  Tip: You can use the first 8 characters of a task ID'));
+  console.log();
+}
+
+// ============================================
+// Persona Display Functions (Phase 7)
+// ============================================
+
+/**
+ * Display list of available personas
+ */
+export function displayPersonas(personas: Persona[], currentId: string): void {
+  console.log();
+  console.log(chalk.bold.white('=== Available Personas ==='));
+  console.log();
+
+  for (const persona of personas) {
+    const isCurrent = persona.id === currentId;
+    const marker = isCurrent ? chalk.green(' ← current') : '';
+    const idDisplay = isCurrent
+      ? chalk.green.bold(persona.id)
+      : chalk.cyan(persona.id);
+
+    console.log(`  ${idDisplay}: ${chalk.white(persona.name)}${marker}`);
+    console.log(chalk.gray(`      ${persona.description}`));
+    console.log();
+  }
+
+  console.log(chalk.gray('  Use /persona <id> to switch personas'));
+  console.log();
+}
+
+/**
+ * Display detailed persona information
+ */
+export function displayPersonaDetail(persona: Persona, isCurrent: boolean): void {
+  console.log();
+  console.log(chalk.bold.white('=== Persona Details ==='));
+  console.log();
+
+  const status = isCurrent ? chalk.green(' (current)') : '';
+  console.log(chalk.cyan('  ID:          ') + chalk.white(persona.id) + status);
+  console.log(chalk.cyan('  Name:        ') + chalk.white(persona.name));
+  console.log(chalk.cyan('  Description: ') + chalk.white(persona.description));
+
+  if (persona.recommendedTemperature !== undefined) {
+    console.log(chalk.cyan('  Temperature: ') + chalk.white(persona.recommendedTemperature.toString()));
+  }
+
+  console.log();
+  console.log(chalk.bold.white('  Components:'));
+  console.log(chalk.cyan('    Role:  ') + chalk.white(persona.components.role));
+  console.log(chalk.cyan('    Style: ') + chalk.white(persona.components.style));
+
+  if (persona.components.focus) {
+    console.log(chalk.cyan('    Focus: ') + chalk.white(persona.components.focus));
+  }
+
+  if (persona.components.constraints && persona.components.constraints.length > 0) {
+    console.log();
+    console.log(chalk.cyan('  Constraints:'));
+    for (const constraint of persona.components.constraints) {
+      console.log(chalk.gray(`    • ${constraint}`));
+    }
+  }
+
+  if (persona.components.guidelines && persona.components.guidelines.length > 0) {
+    console.log();
+    console.log(chalk.cyan('  Guidelines:'));
+    for (const guideline of persona.components.guidelines) {
+      console.log(chalk.gray(`    • ${guideline}`));
+    }
+  }
+
+  console.log();
+}
+
+/**
+ * Display persona help
+ */
+export function displayPersonaHelp(): void {
+  console.log();
+  console.log(chalk.bold.white('Persona Commands:'));
+  console.log();
+  console.log(chalk.cyan('  /personas') + '           - List all available personas');
+  console.log(chalk.cyan('  /persona') + '            - Show current persona details');
+  console.log(chalk.cyan('  /persona <id>') + '       - Switch to a different persona');
+  console.log(chalk.cyan('  /persona info <id>') + '  - Show details of a specific persona');
+  console.log();
+  console.log(chalk.gray('  Personas change how the assistant behaves and communicates.'));
+  console.log(chalk.gray('  Available: default, coder, creative, concise, teacher, socratic'));
   console.log();
 }

@@ -1,20 +1,50 @@
 # Agent SDK Learning Project - Progress Summary
 
-**Last Updated:** Phase 5 In Progress - January 19, 2025
+**Last Updated:** Phase 7 Complete - January 23, 2025
 
 ## 📋 Table of Contents
 - [Project Purpose](#project-purpose)
+- [Complete Roadmap](#complete-roadmap)
 - [Project Overview](#project-overview)
 - [What We've Built](#what-weve-built)
 - [Phase 1: Foundation](#phase-1-foundation)
 - [Phase 2: Core Agent](#phase-2-core-agent)
 - [Phase 3: Tool System Foundation](#phase-3-tool-system-foundation)
 - [Phase 4: Tool Calling Integration](#phase-4-tool-calling-integration)
-- [Phase 5: Agent Tools & Capabilities](#phase-5-agent-tools--capabilities)
+- [Phase 5: Tool System Completion](#phase-5-tool-system-completion)
 - [File Structure](#file-structure)
 - [Key Concepts Learned](#key-concepts-learned)
 - [How to Use](#how-to-use)
-- [What's Next](#whats-next)
+- [Future Phases](#future-phases)
+- [Learning Guide](#learning-guide)
+
+---
+
+## 🗺️ Complete Roadmap
+
+This project follows a structured 12-phase learning journey for building AI agents.
+
+### Phase Overview
+
+| Phase | Focus | Status | Key Learning |
+|-------|-------|--------|--------------|
+| 1 | Foundation | ✅ Complete | Project setup, TypeScript, configuration |
+| 2 | Core Agent | ✅ Complete | Anthropic API, conversations, basic agent |
+| 3 | Tool System | ✅ Complete | Tool architecture, schemas, registry |
+| 4 | Agentic Loop | ✅ Complete | Autonomous tool use, the loop pattern |
+| 5 | Tool Completion | ✅ Complete | Polish tools, design patterns, security |
+| 6 | Streaming | ✅ Complete | Real-time responses, SSE, async patterns |
+| 7 | System Prompts | ✅ Complete | Agent behavior, prompt engineering |
+| 8 | Context Management | 🔄 Current | Token limits, summarization, cost optimization |
+| 9 | Persistence | ⏳ Pending | Save/load conversations, session management |
+| 10 | Memory & Web Search | ⏳ Pending | Long-term memory, external APIs |
+| 11 | Production Readiness | ⏳ Pending | Error handling, retries, testing |
+| 12 | Vision & Multi-modal | ⏳ Pending | Image processing, multi-modal inputs |
+
+### Future Phases (Documented, Not Detailed)
+- Multi-agent patterns
+- Structured output / JSON mode
+- Advanced orchestration
 
 ---
 
@@ -55,7 +85,7 @@ Each feature is implemented as a **tool** that the agent decides when to use.
 
 **Your Role:** Beginner learning TypeScript/Node.js through hands-on development
 
-**Current Status:** ✅ Phase 1-4 Complete | 🔄 Phase 5 In Progress
+**Current Status:** ✅ Phase 1-7 Complete | 🔄 Phase 8 (Context Management) Next
 
 **GitHub Repository:** https://github.com/waynefp/agent_test
 
@@ -479,41 +509,50 @@ executeManyParallel(toolCalls)     // Run in parallel
 
 ---
 
-## 🛠️ Phase 5: Agent Tools & Capabilities
+## 🛠️ Phase 5: Tool System Completion
 
 **Started:** January 19, 2025
-**Status:** In Progress
-**Goal:** Give the agent real-world capabilities through tools
+**Status:** In Progress (Consolidation)
+**Goal:** Complete the tool system with polished, production-quality tools
+
+### Learning Objectives
+
+- Tool design best practices (input validation, error handling, security)
+- Sandboxing and safety patterns
+- When to use tools vs. direct responses
 
 ### The Key Insight
 
-Phase 5 is about making the agent **useful**. Instead of just chatting, the agent can now:
-- Access files
-- Track tasks
-- Search the web
-- Do calculations
+Phase 5 is about making the agent **useful** with well-designed tools. Instead of just chatting, the agent can now:
+- Access files (sandboxed for security)
+- Track tasks (with persistence)
+- Do calculations (accurate math)
 
 **Important:** Each capability is a **tool the agent decides to use**, not a separate CLI feature.
 
-### Tools Added
+### Tools (Final Set for Phase 5)
 
-#### 1. FileSystemTool (src/tools/definitions/FileSystemTool.ts)
+#### 1. CalculatorTool (src/tools/definitions/CalculatorTool.ts)
+- **Purpose:** Accurate mathematical operations
+- **Operations:** `add`, `subtract`, `multiply`, `divide`
+- **Features:** Division by zero handling, human-readable expressions
+- **Use case:** "What is 847 × 293?" (guaranteed accuracy)
+
+#### 2. FileSystemTool (src/tools/definitions/FileSystemTool.ts)
 - **Purpose:** Let the agent read, write, and explore files
 - **Operations:** `read`, `write`, `list`, `exists`
 - **Security:** Sandboxed to `./workspace` directory (prevents access outside)
 - **Use case:** "Save this information to a file" or "What files are in the workspace?"
 
-#### 2. TaskTool (src/tools/definitions/TaskTool.ts)
+#### 3. TaskTool (src/tools/definitions/TaskTool.ts)
 - **Purpose:** Let the agent track tasks and projects
 - **Operations:** `create`, `start`, `complete`, `fail`, `list`, `get`
 - **Persistence:** Tasks saved to `data/tasks/tasks.json`
 - **Use case:** "Create a task to review the code" or "What tasks are pending?"
 
-#### 3. WebSearchTool (src/tools/definitions/WebSearchTool.ts)
-- **Purpose:** Let the agent search the web for information
-- **API:** DuckDuckGo Instant Answer (free, no API key)
-- **Limitations:** Best for definitions and facts, not real-time data
-- **Use case:** "Look up what GraphQL is and tell me the source"
+### Removed Tools
+
+- **WebSearchTool** - Removed due to DuckDuckGo API limitations. A proper web search tool will be added in Phase 10 with a real search API.
 
 ### Supporting Infrastructure
 
@@ -527,14 +566,14 @@ Phase 5 is about making the agent **useful**. Instead of just chatting, the agen
 - Handles Date serialization
 - Auto-creates data directory
 
-### Key Files Created (Phase 5)
+### Key Files (Phase 5)
 ```
+✅ src/tools/definitions/CalculatorTool.ts
 ✅ src/tools/definitions/FileSystemTool.ts
 ✅ src/tools/definitions/TaskTool.ts
-✅ src/tools/definitions/WebSearchTool.ts
 ✅ src/agent/TaskTracker.ts
 ✅ src/persistence/TaskPersistence.ts
-✅ src/index.ts (updated to register all tools)
+❌ src/tools/definitions/WebSearchTool.ts (removed)
 ```
 
 ### What You Learned (Phase 5)
@@ -542,17 +581,156 @@ Phase 5 is about making the agent **useful**. Instead of just chatting, the agen
 **Tool Design:**
 - Making tools that are genuinely useful to the agent
 - Sandboxing for security (restricting file access)
-- Connecting tools to external APIs
+- When to remove a tool that doesn't serve its purpose well
 
 **Persistence:**
 - JSON file storage patterns
 - Handling Date serialization/deserialization
 - Creating directories programmatically
 
-**API Integration:**
-- Working with external APIs (DuckDuckGo)
-- Understanding API limitations
-- Error handling for network requests
+---
+
+## 🌊 Phase 6: Streaming Responses
+
+**Started:** January 23, 2025
+**Status:** Complete
+**Goal:** Display responses in real-time as Claude generates them
+
+### Learning Objectives
+
+- The streaming API (`stream()` vs `create()`)
+- Server-Sent Events (SSE) concept
+- Async iteration patterns in TypeScript
+- Handling streaming with tool use
+
+### What We Built
+
+#### 1. Streaming Agent Method
+- Added `chatStream()` method to Agent class
+- Returns async generator yielding text chunks
+- Handles tool use during streaming (stream → tool → stream)
+
+#### 2. Streaming Agentic Loop
+- Same pattern as regular loop, but streams text in real-time
+- Processes stream events as they arrive
+- Gets final message for complete data and stop reason
+
+#### 3. CLI Streaming Display
+- `startStreamingResponse()` - Initialize streaming output
+- `writeStreamChunk()` - Output text without newlines
+- `endStreamingResponse()` - Clean up after streaming
+- `displayToolUseNotification()` - Show tool use during stream
+
+### Key Concepts
+
+**Stream Events:**
+- `content_block_start` - New block beginning (text or tool_use)
+- `content_block_delta` - Chunk of content (text_delta or input_json_delta)
+- `message_delta` - Message updates (stop_reason)
+
+**Callback Pattern:**
+```typescript
+interface StreamCallbacks {
+  onText?: (text: string) => void;
+  onToolUse?: (toolName: string) => void;
+  onComplete?: (fullText: string) => void;
+  onError?: (error: Error) => void;
+}
+```
+
+### Key Files Updated (Phase 6)
+```
+✅ src/agent/Agent.ts (added chatStream method)
+✅ src/types/agent.types.ts (added StreamCallbacks)
+✅ src/cli/display.ts (added streaming display functions)
+✅ src/cli/commands.ts (uses streaming in chat loop)
+✅ learning/05-streaming.md (new learning guide)
+```
+
+### What You Learned (Phase 6)
+
+**Streaming API:**
+- Using `client.messages.stream()` instead of `create()`
+- Processing events with `for await...of`
+- Getting complete data with `await stream.finalMessage()`
+
+**Terminal Output:**
+- Using `process.stdout.write()` for output without newlines
+- Managing display state during streaming
+- Handling tool use interruptions cleanly
+
+**TypeScript Patterns:**
+- Async generators and iteration
+- Callback interfaces for extensibility
+- Event-driven programming
+
+---
+
+## 🎭 Phase 7: System Prompts & Agent Behavior
+
+**Started:** January 23, 2025
+**Status:** Complete
+**Goal:** Understand how to shape agent behavior through system prompts
+
+### Learning Objectives
+
+- How system prompts shape agent behavior
+- Prompt engineering fundamentals
+- Designing agent personas
+- Component-based prompt construction
+
+### What We Built
+
+#### 1. Persona System (`src/config/personas.ts`)
+- `SystemPromptComponents` interface - Break prompts into role, style, focus, constraints
+- `Persona` interface - Complete package of components + settings
+- `buildSystemPrompt()` - Assemble components into final prompt
+- 6 predefined personas: default, coder, creative, concise, teacher, socratic
+
+#### 2. Agent Persona Support
+- `setPersona(id)` - Switch to a different persona
+- `getPersona()` - Get current persona
+- `setSystemPrompt(prompt)` - Set custom prompt
+- `getAvailablePersonas()` - List available persona IDs
+- Automatic temperature adjustment based on persona
+
+#### 3. CLI Commands
+- `/personas` - List all available personas
+- `/persona` - Show current persona details
+- `/persona <id>` - Switch to a different persona
+- `/persona info <id>` - Show details of a specific persona
+
+### Predefined Personas
+
+| ID | Name | Description | Temperature |
+|----|------|-------------|-------------|
+| `default` | Helpful Assistant | General-purpose assistant | 0.7 |
+| `coder` | Coding Assistant | Programming and technical help | 0.3 |
+| `creative` | Creative Writer | Creative writing and storytelling | 1.0 |
+| `concise` | Concise Assistant | Brief, to-the-point answers | 0.5 |
+| `teacher` | Patient Teacher | Clear explanations for learning | 0.6 |
+| `socratic` | Socratic Guide | Guides through questions | 0.7 |
+
+### Key Files (Phase 7)
+```
+✅ src/config/personas.ts (new - persona definitions)
+✅ src/agent/Agent.ts (updated - persona methods)
+✅ src/cli/display.ts (updated - persona display)
+✅ src/cli/commands.ts (updated - persona commands)
+✅ learning/06-system-prompts.md (new - learning guide)
+```
+
+### What You Learned (Phase 7)
+
+**Prompt Engineering:**
+- Breaking prompts into components (role, style, focus, constraints)
+- How temperature affects behavior
+- Best practices for effective prompts
+
+**System Design:**
+- Persona as a reusable package
+- Dynamic behavior switching
+- Building prompts programmatically
 
 ---
 
@@ -839,73 +1017,160 @@ const agent = createAgent({
 
 ---
 
-## 🎯 What's Next
+## 🔮 Future Phases
 
-### Current Phase 5 Options (More Tools)
+### Phase 6: Streaming Responses
+**Goal:** Real-time response streaming
 
-**Continue adding agent capabilities:**
+**What We'll Build:**
+- Agent streams responses character by character
+- Streaming works with tool calls (stream → tool → stream)
+- Visual loading indicators during processing
 
-1. **Code Runner Tool** - Let the agent write and execute JavaScript/TypeScript code in a sandbox
-2. **Memory Tool** - Let the agent store and recall facts about you across sessions
-3. **Upgrade WebSearchTool** - Use a real search API (Brave, SerpAPI) for current information
+**What You'll Learn:**
+- The streaming API (`stream: true`)
+- Server-Sent Events (SSE) concept
+- Async iteration patterns in TypeScript
 
-### Future Phases
+---
 
-#### Phase 6: Conversation Persistence
-**Goal:** Save and load chat sessions
+### Phase 7: System Prompts & Agent Behavior
+**Goal:** Customize agent behavior through prompts
+
+**What We'll Build:**
+- Configurable system prompt (not hardcoded)
+- Agent "personality" options
+- Understanding of how prompts affect tool use decisions
+
+**What You'll Learn:**
+- How system prompts shape agent behavior
+- Prompt engineering fundamentals
+- Persona design and consistency
+
+---
+
+### Phase 8: Context Window Management
+**Goal:** Handle long conversations effectively
+
+**What We'll Build:**
+- Token usage tracking per message
+- Automatic conversation summarization when approaching limits
+- Configurable context strategies
+
+**What You'll Learn:**
+- Token counting and limits
+- Context window strategies (sliding window, summarization)
+- Cost optimization (fewer tokens = cheaper)
+
+---
+
+### Phase 9: Persistence
+**Goal:** Save and resume conversations
 
 **What We'll Build:**
 - Save conversations to JSON files
 - Load and resume previous sessions
-- List saved conversations
+- Session management (list, delete)
 
 **What You'll Learn:**
-- JSON serialization with complex types
+- Conversation serialization/deserialization
 - File system operations for persistence
 - Session management patterns
 
-#### Phase 7: Enhanced CLI & UX
-**Goal:** Professional user experience
+---
+
+### Phase 10: Memory & Web Search
+**Goal:** Long-term memory and external data
 
 **What We'll Build:**
-- Streaming responses (see text as it types)
-- Loading spinners with `ora`
-- Syntax highlighting for code
-- Better error messages
+- Long-term memory tool (store/recall facts about user)
+- Web search with a real API (Brave, SerpAPI, or similar)
+- Distinction between conversation memory and factual memory
 
 **What You'll Learn:**
-- CLI UX best practices
-- Streaming API responses
-- Terminal capabilities
+- Memory architectures (short-term vs long-term)
+- External API integration with proper error handling
+- Memory retrieval strategies
 
-#### Phase 8: Testing & Documentation
-**Goal:** Production-quality code
+---
+
+### Phase 11: Production Readiness
+**Goal:** Make the agent robust and maintainable
 
 **What We'll Build:**
-- Unit tests with Jest
-- Integration tests for tools
-- Complete documentation
-- Example scripts
+- Graceful error recovery
+- Automatic retries with exponential backoff
+- Basic test suite for tools and agent
+- Rate limit handling
 
 **What You'll Learn:**
-- Testing strategies
-- Test-driven development
-- Documentation best practices
+- Error handling and retry patterns
+- Testing non-deterministic systems
+- Agent observability (logging, debugging)
+
+---
+
+### Phase 12: Vision & Multi-modal
+**Goal:** Process images and multi-modal inputs
+
+**What We'll Build:**
+- Image processing capability
+- Multi-modal input handling
+- Vision-based tools
+
+**What You'll Learn:**
+- Multi-modal API usage
+- Image encoding and handling
+- Vision-specific use cases
+
+---
+
+### Future Exploration (Not Yet Planned in Detail)
+- Multi-agent patterns (agents calling other agents)
+- Structured output / JSON mode
+- Advanced orchestration
+- Custom model fine-tuning integration
+
+---
+
+## 📚 Learning Guide
+
+A separate **Learning Guide** has been created to serve as a standalone reference for building AI agents. Located in the `learning/` folder:
+
+| File | Topic |
+|------|-------|
+| `learning_summary.md` | Overview, quick reference, glossary |
+| `01-foundations.md` | Project setup, TypeScript essentials |
+| `02-core-agent.md` | Anthropic API, conversations |
+| `03-tool-system.md` | Tool architecture, Zod, registry |
+| `04-agentic-loop.md` | Autonomous tool use, the loop |
+
+Each file includes:
+- Explanations of concepts
+- Reusable code snippets
+- Exercises with solutions
+- Quick reference sections
+
+**New topic files will be added as each phase is completed.**
 
 ---
 
 ## 📊 Progress Tracker
 
-| Phase | Status | Completion Date | Key Deliverable |
-|-------|--------|----------------|-----------------|
+| Phase | Status | Date | Key Deliverable |
+|-------|--------|------|-----------------|
 | Phase 1: Foundation | ✅ Complete | Jan 14, 2025 | Project setup, types, utils |
 | Phase 2: Core Agent | ✅ Complete | Jan 14, 2025 | Working conversational agent |
 | Phase 3: Tool Foundation | ✅ Complete | Jan 15, 2025 | BaseTool, CalculatorTool, ToolRegistry |
 | Phase 4: Tool Integration | ✅ Complete | Jan 15, 2025 | Agentic loop, ToolExecutor |
-| Phase 5: Agent Tools | 🔄 In Progress | Jan 19, 2025 | FileSystem, Task, WebSearch tools |
-| Phase 6: Persistence | ⏳ Pending | - | Save/load conversations |
-| Phase 7: Enhanced UX | ⏳ Pending | - | Better CLI experience |
-| Phase 8: Testing & Docs | ⏳ Pending | - | Tests, documentation |
+| Phase 5: Tool Completion | ✅ Complete | Jan 19-23, 2025 | FileSystem, Task tools (polished) |
+| Phase 6: Streaming | ✅ Complete | Jan 23, 2025 | Real-time responses |
+| Phase 7: System Prompts | ✅ Complete | Jan 23, 2025 | Agent behavior customization |
+| Phase 8: Context Management | 🔄 In Progress | - | Token limits, summarization |
+| Phase 9: Persistence | ⏳ Pending | - | Save/load conversations |
+| Phase 10: Memory & Web | ⏳ Pending | - | Long-term memory, web search |
+| Phase 11: Production | ⏳ Pending | - | Error handling, testing |
+| Phase 12: Vision | ⏳ Pending | - | Multi-modal, images |
 
 ---
 
@@ -1004,5 +1269,6 @@ A: Separation of concerns. Each file has one job, making code easier to understa
 
 ---
 
-**Last Updated:** Phase 5 In Progress - January 19, 2025
-**Next Update:** After Phase 5 complete or Phase 6 begins
+**Last Updated:** Phase 7 (System Prompts) Complete - January 23, 2025
+**Next Update:** After Phase 8 begins or completes
+**Learning Guide:** See `learning/` folder for standalone reference materials

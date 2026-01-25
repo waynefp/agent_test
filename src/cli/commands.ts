@@ -14,20 +14,28 @@ import {
   displayWelcome,
   displayHelp,
   displayUserMessage,
-  displayAssistantMessage,
   displaySystemMessage,
   displayError,
   displaySuccess,
   displayHistory,
   displayStats,
   displaySeparator,
-  displayThinking,
   clearScreen,
   displayTasks,
   displayTaskDetail,
   displayTaskStats,
   displayTaskHelp,
+  startStreamingResponse,
+  writeStreamChunk,
+  endStreamingResponse,
+  displayToolUseNotification,
+  displayStreamError,
+  displayPersonas,
+  displayPersonaDetail,
+  displayPersonaHelp,
 } from './display.js';
+import type { StreamCallbacks } from '../types/agent.types.js';
+import { getAllPersonas, getPersona } from '../config/personas.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -118,6 +126,17 @@ async function handleCommand(
         return true;
       }
       return await handleTaskCommand(args, taskTracker);
+
+    // ============================================
+    // Persona Commands (Phase 7)
+    // ============================================
+
+    case '/personas':
+      displayPersonas(getAllPersonas(), agent.getPersona().id);
+      return true;
+
+    case '/persona':
+      return handlePersonaCommand(args, agent);
 
     default:
       displayError(`Unknown command: ${cmd}`);
@@ -301,6 +320,65 @@ function findTaskByPartialId(
 }
 
 /**
+ * Handle persona subcommands
+ * BEGINNER NOTE: This handles commands like /persona, /persona coder, etc.
+ *
+ * @param args - Command arguments
+ * @param agent - Agent instance
+ * @returns true to continue chat loop
+ */
+function handlePersonaCommand(args: string[], agent: Agent): boolean {
+  // No args - show current persona
+  if (args.length === 0) {
+    const currentPersona = agent.getPersona();
+    displayPersonaDetail(currentPersona, true);
+    return true;
+  }
+
+  const subCommand = args[0].toLowerCase();
+
+  // /persona help
+  if (subCommand === 'help') {
+    displayPersonaHelp();
+    return true;
+  }
+
+  // /persona info <id>
+  if (subCommand === 'info' && args.length > 1) {
+    const personaId = args[1].toLowerCase();
+    const persona = getPersona(personaId);
+    if (!persona) {
+      displayError(`Persona not found: ${personaId}`);
+      displaySystemMessage('Use /personas to see available personas');
+      return true;
+    }
+    const isCurrent = persona.id === agent.getPersona().id;
+    displayPersonaDetail(persona, isCurrent);
+    return true;
+  }
+
+  // /persona <id> - switch to persona
+  const personaId = subCommand;
+  const success = agent.setPersona(personaId);
+
+  if (success) {
+    const persona = agent.getPersona();
+    displaySuccess(`Switched to: ${persona.name}`);
+    displaySystemMessage(persona.description);
+
+    // Show temperature change if applicable
+    if (persona.recommendedTemperature !== undefined) {
+      displaySystemMessage(`Temperature set to ${persona.recommendedTemperature} (recommended for this persona)`);
+    }
+  } else {
+    displayError(`Persona not found: ${personaId}`);
+    displaySystemMessage('Use /personas to see available personas');
+  }
+
+  return true;
+}
+
+/**
  * Start an interactive chat session
  * BEGINNER NOTE: This is the main chat loop - it keeps running until the user exits
  *
@@ -336,14 +414,35 @@ export async function startChatSession(
       // Display user message
       displayUserMessage(userMessage);
 
-      // Show thinking indicator
-      displayThinking();
+      // Set up streaming callbacks
+      let isFirstChunk = true;
+      const streamCallbacks: StreamCallbacks = {
+        onText: (text) => {
+          if (isFirstChunk) {
+            startStreamingResponse();
+            isFirstChunk = false;
+          }
+          writeStreamChunk(text);
+        },
+        onToolUse: (toolName) => {
+          if (!isFirstChunk) {
+            endStreamingResponse();
+          }
+          displayToolUseNotification(toolName);
+          isFirstChunk = true;
+        },
+        onComplete: () => {
+          if (!isFirstChunk) {
+            endStreamingResponse();
+          }
+        },
+        onError: (error) => {
+          displayStreamError(error);
+        },
+      };
 
-      // Get response from agent
-      const response = await agent.chat(userMessage);
-
-      // Display assistant response
-      displayAssistantMessage(response);
+      // Get streaming response from agent
+      await agent.chatStream(userMessage, streamCallbacks);
 
     } catch (error) {
       // Handle errors gracefully
