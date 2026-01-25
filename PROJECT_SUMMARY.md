@@ -40,6 +40,7 @@ This project follows a structured 12-phase learning journey for building AI agen
 | 10 | Memory & Web Search | 🔄 Current | Long-term memory, external APIs |
 | 11 | Production Readiness | ⏳ Pending | Error handling, retries, testing |
 | 12 | Vision & Multi-modal | ⏳ Pending | Image processing, multi-modal inputs |
+| 13 | Skills System | ⏳ Pending | Skill files, dynamic prompt loading |
 
 ### Future Phases (Documented, Not Detailed)
 - Multi-agent patterns
@@ -1266,6 +1267,30 @@ const agent = createAgent({
 
 ---
 
+### Phase 13: Skills System
+**Goal:** Dynamic behavior loading through skill files
+
+**What We'll Build:**
+- Skill file format (Markdown-based)
+- Skill loader and parser
+- Skill registry for available skills
+- CLI commands to list/load skills
+- Dynamic prompt injection from skills
+
+**What You'll Learn:**
+- Skill file structure and conventions
+- Dynamic prompt composition
+- Modular agent behaviors
+- Separation of concerns (code vs. behavior definitions)
+
+**Key Concepts:**
+- Skills as reusable behavior modules
+- Skill files define: purpose, instructions, examples, constraints
+- Skills can specify which tools to use
+- Skills can be combined or switched at runtime
+
+---
+
 ### Future Exploration (Not Yet Planned in Detail)
 - Multi-agent patterns (agents calling other agents)
 - Structured output / JSON mode
@@ -1316,6 +1341,7 @@ Each file includes:
 | Phase 10: Memory & Web | ⏳ Pending | - | Long-term memory, web search |
 | Phase 11: Production | ⏳ Pending | - | Error handling, testing |
 | Phase 12: Vision | ⏳ Pending | - | Multi-modal, images |
+| Phase 13: Skills | ⏳ Pending | - | Skill files, dynamic behaviors |
 
 ---
 

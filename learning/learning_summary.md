@@ -21,6 +21,7 @@
 | *09-memory.md* | Memory & Web | Long-term memory, web search *(Coming in Phase 10)* |
 | *10-production.md* | Production | Error handling, testing *(Coming in Phase 11)* |
 | *11-vision.md* | Vision | Multi-modal, images *(Coming in Phase 12)* |
+| *12-skills.md* | Skills System | Skill files, dynamic behaviors *(Coming in Phase 13)* |
 
 ---
 
