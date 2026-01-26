@@ -39,8 +39,8 @@ This project follows a structured 12-phase learning journey for building AI agen
 | 9 | Persistence | ✅ Complete | Save/load conversations, session management |
 | 10 | Memory & Web Search | ✅ Complete | Long-term memory, external APIs |
 | 11 | Production Readiness | ✅ Complete | Error handling, retries, testing |
-| 12 | Vision & Multi-modal | 🔄 Next | Image processing, multi-modal inputs |
-| 13 | Skills System | ⏳ Pending | Skill files, dynamic prompt loading |
+| 12 | Vision & Multi-modal | ✅ Complete | Image processing, multi-modal inputs |
+| 13 | Skills System | 🔄 Next | Skill files, dynamic prompt loading |
 
 ### Future Phases (Documented, Not Detailed)
 - Multi-agent patterns
@@ -86,7 +86,7 @@ Each feature is implemented as a **tool** that the agent decides when to use.
 
 **Your Role:** Beginner learning TypeScript/Node.js through hands-on development
 
-**Current Status:** ✅ Phase 1-11 Complete | 🔄 Phase 12 (Vision & Multi-modal) Next
+**Current Status:** ✅ Phase 1-12 Complete | 🔄 Phase 13 (Skills System) Next
 
 **GitHub Repository:** https://github.com/waynefp/agent_test
 
@@ -1033,6 +1033,100 @@ const retryConfig = {
 
 ---
 
+## 👁️ Phase 12: Vision & Multi-modal
+
+**Started:** January 26, 2025
+**Status:** Complete
+**Goal:** Add image processing capabilities to the agent
+
+### Learning Objectives
+
+- How Claude processes images
+- Image encoding (base64) and formats
+- Multi-modal message handling
+- Token costs for images
+
+### What We Built
+
+#### 1. Image Utilities (`src/utils/image.ts`)
+- Load images from files or URLs
+- Auto-detect media types from extensions
+- Convert to base64 for API
+- Validate image size (max 20MB)
+- Estimate token cost
+
+#### 2. Conversation Types (`src/types/conversation.types.ts`)
+- `ImageContent` type for image blocks
+- `ImageMediaType` for supported formats (jpeg, png, gif, webp)
+- `isImageContent()` type guard
+- `createImageContent()` helper
+
+#### 3. Agent Vision Methods
+- `chatWithImage(path, question)` - Send single image
+- `chatWithImages(paths, question)` - Send multiple images
+- `chatWithImageStream(path, question, callbacks)` - Streaming response
+- `inspectImage(path)` - Check image info without sending
+
+#### 4. CLI Commands
+- `/image <path>` - Send image to Claude
+- `/image <path> <question>` - Send with specific question
+- `/image info <path>` - Inspect image details
+- `/image help` - Show image command help
+
+### Supported Image Formats
+
+| Format | Media Type | Best For |
+|--------|------------|----------|
+| JPEG | `image/jpeg` | Photos |
+| PNG | `image/png` | Screenshots, diagrams |
+| GIF | `image/gif` | Static GIFs |
+| WebP | `image/webp` | Modern compression |
+
+### Example Usage
+
+```typescript
+// Single image
+const response = await agent.chatWithImage(
+  './screenshot.png',
+  'What errors do you see?'
+);
+
+// Multiple images
+const comparison = await agent.chatWithImages(
+  ['./before.png', './after.png'],
+  'What changed?'
+);
+
+// Inspect without sending
+const info = await agent.inspectImage('./large-photo.jpg');
+console.log(`Estimated tokens: ${info.estimatedTokens}`);
+```
+
+### Key Files (Phase 12)
+```
+✅ src/utils/image.ts (new - image utilities)
+✅ src/types/conversation.types.ts (updated - ImageContent)
+✅ src/agent/ConversationManager.ts (updated - image messages)
+✅ src/agent/Agent.ts (updated - vision methods)
+✅ src/cli/commands.ts (updated - /image commands)
+✅ src/cli/display.ts (updated - help text)
+✅ learning/11-vision-multimodal.md (new - learning guide)
+```
+
+### What You Learned (Phase 12)
+
+**Multi-modal Processing:**
+- Images sent as base64-encoded data
+- Multiple content blocks per message
+- Token costs depend on image dimensions
+
+**Image Handling:**
+- Loading from files and URLs
+- Format detection and validation
+- Size limits and optimization
+
+---
+
 ## 📁 File Structure (Detailed)
 
 ### Source Code (src/)
@@ -1051,7 +1145,8 @@ src/
 │
 ├── persistence/                  # Data persistence
 │   ├── TaskPersistence.ts        # JSON file storage for tasks (Phase 5)
-│   └── ConversationPersistence.ts # Conversation save/load (Phase 9)
+│   ├── ConversationPersistence.ts # Conversation save/load (Phase 9)
+│   └── MemoryStore.ts            # Long-term memory storage (Phase 10)
 │
 ├── tools/                        # Tool system ✅
 │   ├── ToolRegistry.ts           # Tool management
@@ -1061,7 +1156,8 @@ src/
 │       ├── CalculatorTool.ts     # Math operations
 │       ├── FileSystemTool.ts     # File read/write (Phase 5)
 │       ├── TaskTool.ts           # Task management (Phase 5)
-│       ├── WebSearchTool.ts      # Web search (Phase 5)
+│       ├── MemoryTool.ts         # Long-term memory (Phase 10)
+│       ├── WebSearchTool.ts      # Web search (Phase 10)
 │       └── index.ts              # Re-exports
 │
 ├── types/                        # TypeScript definitions
@@ -1078,6 +1174,8 @@ src/
 ├── utils/                        # Utilities
 │   ├── logger.ts                 # Colorful console logging
 │   ├── errors.ts                 # Custom error classes
+│   ├── retry.ts                  # Retry with exponential backoff (Phase 11)
+│   └── image.ts                  # Image loading and encoding (Phase 12)
 │   └── retry.ts                  # Retry with exponential backoff (Phase 11)
 │
 └── cli/                          # CLI interface
@@ -1487,6 +1585,7 @@ A separate **Learning Guide** has been created to serve as a standalone referenc
 | `08-persistence.md` | Save/load conversations, sessions |
 | `09-memory-websearch.md` | Long-term memory, web search |
 | `10-production.md` | Error handling, retries, testing |
+| `11-vision-multimodal.md` | Image processing, multi-modal |
 
 Each file includes:
 - Explanations of concepts
@@ -1513,7 +1612,7 @@ Each file includes:
 | Phase 9: Persistence | ✅ Complete | Jan 25, 2025 | Save/load conversations |
 | Phase 10: Memory & Web | ✅ Complete | Jan 25, 2025 | Long-term memory, web search |
 | Phase 11: Production | ✅ Complete | Jan 25, 2025 | Retry logic, testing |
-| Phase 12: Vision | ⏳ Pending | - | Multi-modal, images |
+| Phase 12: Vision | ✅ Complete | Jan 26, 2025 | Multi-modal, images |
 | Phase 13: Skills | ⏳ Pending | - | Skill files, dynamic behaviors |
 
 ---

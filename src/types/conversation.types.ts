@@ -9,11 +9,30 @@
  */
 
 /**
- * Content block in a message - can be text, tool use, or tool result
+ * Content block in a message - can be text, image, tool use, or tool result
  * BEGINNER NOTE: Messages can contain different types of content.
- * A message might have text, or a tool call, or both!
+ * A message might have text, an image, a tool call, or combinations!
  */
-export type MessageContent = TextContent | ToolUseContent | ToolResultContent;
+export type MessageContent = TextContent | ImageContent | ToolUseContent | ToolResultContent;
+
+/**
+ * Supported image media types
+ * BEGINNER NOTE: These are the image formats Claude can understand
+ */
+export type ImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+
+/**
+ * Image content in a message (Phase 12: Vision)
+ * BEGINNER NOTE: Claude can "see" images! Send them as base64-encoded data.
+ */
+export interface ImageContent {
+  type: 'image';
+  source: {
+    type: 'base64';
+    media_type: ImageMediaType;
+    data: string;  // Base64-encoded image data
+  };
+}
 
 /**
  * Text content in a message
@@ -220,4 +239,31 @@ export function isToolResultContent(
   content: MessageContent
 ): content is ToolResultContent {
   return content.type === 'tool_result';
+}
+
+/**
+ * Type guard to check if content is image (Phase 12: Vision)
+ */
+export function isImageContent(
+  content: MessageContent
+): content is ImageContent {
+  return content.type === 'image';
+}
+
+/**
+ * Helper to create an ImageContent block from base64 data
+ * BEGINNER NOTE: Use this to construct image content for messages
+ */
+export function createImageContent(
+  base64Data: string,
+  mediaType: ImageMediaType
+): ImageContent {
+  return {
+    type: 'image',
+    source: {
+      type: 'base64',
+      media_type: mediaType,
+      data: base64Data,
+    },
+  };
 }

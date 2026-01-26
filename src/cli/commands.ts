@@ -37,6 +37,10 @@ import {
 import type { StreamCallbacks } from '../types/agent.types.js';
 import { getAllPersonas, getPersona } from '../config/personas.js';
 import { logger } from '../utils/logger.js';
+import {
+  getSupportedExtensions,
+  formatFileSize,
+} from '../utils/image.js';
 
 /**
  * Check if a message is a command
@@ -160,6 +164,13 @@ async function handleCommand(
 
     case '/session':
       return await handleSessionCommand(args, agent);
+
+    // ============================================
+    // Image Commands (Phase 12)
+    // ============================================
+
+    case '/image':
+      return await handleImageCommand(args, agent);
 
     default:
       displayError(`Unknown command: ${cmd}`);
@@ -694,6 +705,148 @@ function displaySessionHelp(): void {
   displaySystemMessage('/session info         Show current session info');
   displaySystemMessage('/session title <t>    Set conversation title');
   displaySystemMessage('/session delete <id>  Delete a saved conversation');
+  displaySeparator();
+}
+
+// ============================================
+// Image Command Handlers (Phase 12)
+// ============================================
+
+/**
+ * Handle /image command
+ * BEGINNER NOTE: Send images to Claude for analysis
+ *
+ * @param args - Command arguments
+ * @param agent - Agent instance
+ * @returns true to continue chat loop
+ */
+async function handleImageCommand(args: string[], agent: Agent): Promise<boolean> {
+  // No args - show help
+  if (args.length === 0) {
+    displayImageHelp();
+    return true;
+  }
+
+  const subCommand = args[0].toLowerCase();
+
+  // Check for subcommands
+  if (subCommand === 'help') {
+    displayImageHelp();
+    return true;
+  }
+
+  if (subCommand === 'info' && args.length > 1) {
+    // Inspect image without sending
+    return await handleImageInspect(args.slice(1).join(' '), agent);
+  }
+
+  // Otherwise, treat as image path with optional question
+  // Format: /image <path> [question...]
+  const imagePath = args[0];
+  const question = args.length > 1 ? args.slice(1).join(' ') : undefined;
+
+  return await handleImageChat(imagePath, question, agent);
+}
+
+/**
+ * Handle sending an image to Claude
+ */
+async function handleImageChat(
+  imagePath: string,
+  question: string | undefined,
+  agent: Agent
+): Promise<boolean> {
+  try {
+    displaySystemMessage(`📷 Loading image: ${imagePath}`);
+
+    // Set up streaming callbacks
+    let isFirstChunk = true;
+    const streamCallbacks: StreamCallbacks = {
+      onText: (text) => {
+        if (isFirstChunk) {
+          startStreamingResponse();
+          isFirstChunk = false;
+        }
+        writeStreamChunk(text);
+      },
+      onToolUse: (toolName) => {
+        if (!isFirstChunk) {
+          endStreamingResponse();
+        }
+        displayToolUseNotification(toolName);
+        isFirstChunk = true;
+      },
+      onComplete: () => {
+        if (!isFirstChunk) {
+          endStreamingResponse();
+        }
+      },
+      onError: (error) => {
+        displayStreamError(error);
+      },
+    };
+
+    // Send image with streaming response
+    await agent.chatWithImageStream(imagePath, question, streamCallbacks);
+
+    return true;
+  } catch (error) {
+    if (error instanceof Error) {
+      displayError(error.message);
+    } else {
+      displayError('Failed to process image');
+    }
+    return true;
+  }
+}
+
+/**
+ * Handle inspecting an image (without sending)
+ */
+async function handleImageInspect(imagePath: string, agent: Agent): Promise<boolean> {
+  try {
+    displaySystemMessage(`🔍 Inspecting image: ${imagePath}`);
+
+    const info = await agent.inspectImage(imagePath);
+
+    displaySeparator();
+    displaySystemMessage('📷 Image Information');
+    displaySeparator();
+    displaySystemMessage(`Source: ${info.source}`);
+    displaySystemMessage(`Type: ${info.mediaType}`);
+    displaySystemMessage(`Size: ${formatFileSize(info.sizeBytes)}`);
+    displaySystemMessage(`Estimated tokens: ~${info.estimatedTokens}`);
+    displaySeparator();
+    displaySystemMessage('Use /image <path> to send this image to Claude');
+
+    return true;
+  } catch (error) {
+    if (error instanceof Error) {
+      displayError(error.message);
+    } else {
+      displayError('Failed to inspect image');
+    }
+    return true;
+  }
+}
+
+/**
+ * Display image command help
+ */
+function displayImageHelp(): void {
+  displaySeparator();
+  displaySystemMessage('📷 Image Commands (Phase 12: Vision)');
+  displaySeparator();
+  displaySystemMessage('/image <path> [question]  Send an image to Claude');
+  displaySystemMessage('/image info <path>        Inspect image without sending');
+  displaySystemMessage('/image help               Show this help');
+  displaySeparator();
+  displaySystemMessage('Examples:');
+  displaySystemMessage('  /image ./photo.jpg');
+  displaySystemMessage('  /image ./diagram.png What does this show?');
+  displaySystemMessage('  /image https://example.com/image.jpg Describe this');
+  displaySeparator();
+  displaySystemMessage(`Supported formats: ${getSupportedExtensions().join(', ')}`);
   displaySeparator();
 }
 

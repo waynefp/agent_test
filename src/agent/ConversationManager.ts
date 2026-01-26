@@ -16,6 +16,7 @@ import type {
   Conversation,
   ConversationOptions,
   TextContent,
+  ImageContent,
 } from '../types/conversation.types.js';
 import type { AnthropicMessageParam } from '../config/anthropic.config.js';
 import { logger } from '../utils/logger.js';
@@ -87,6 +88,48 @@ export class ConversationManager {
     };
 
     return this.addMessage(role, [content]);
+  }
+
+  /**
+   * Add a message with an image (Phase 12: Vision)
+   * BEGINNER NOTE: Send an image to Claude with optional text
+   *
+   * @param imageContent - The image content block
+   * @param text - Optional text to accompany the image
+   */
+  addImageMessage(imageContent: ImageContent, text?: string): Message {
+    const content: MessageContent[] = [imageContent];
+
+    // Add text if provided
+    if (text) {
+      content.push({
+        type: 'text',
+        text,
+      });
+    }
+
+    return this.addMessage('user', content);
+  }
+
+  /**
+   * Add a message with multiple images (Phase 12: Vision)
+   * BEGINNER NOTE: You can send multiple images in one message!
+   *
+   * @param images - Array of image content blocks
+   * @param text - Optional text to accompany the images
+   */
+  addMultiImageMessage(images: ImageContent[], text?: string): Message {
+    const content: MessageContent[] = [...images];
+
+    // Add text if provided
+    if (text) {
+      content.push({
+        type: 'text',
+        text,
+      });
+    }
+
+    return this.addMessage('user', content);
   }
 
   /**
@@ -247,8 +290,6 @@ export class ConversationManager {
     return messagesToConvert.map((message) => ({
       role: message.role,
       content: message.content.map((block) => {
-        // For now, we only handle text content
-        // In Phase 4, we'll add tool_use and tool_result
         if (block.type === 'text') {
           return {
             type: 'text',
@@ -256,8 +297,19 @@ export class ConversationManager {
           };
         }
 
-        // For other types, just pass through
-        // This will be expanded in Phase 4 for tools
+        // Handle image content (Phase 12: Vision)
+        if (block.type === 'image') {
+          return {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: block.source.media_type,
+              data: block.source.data,
+            },
+          };
+        }
+
+        // For other types (tool_use, tool_result), pass through
         return block as any;
       }),
     }));

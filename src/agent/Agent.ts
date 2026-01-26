@@ -41,12 +41,16 @@ import {
 } from '../persistence/ConversationPersistence.js';
 import type { ITool } from '../types/tool.types.js';
 import type { AgentConfig, ChatOptions, AgentState, StreamCallbacks } from '../types/agent.types.js';
-import type { Message, ToolUseContent } from '../types/conversation.types.js';
+import type { Message, ToolUseContent, ImageContent } from '../types/conversation.types.js';
+import {
+  loadImage,
+  toImageContent,
+  estimateImageTokens,
+} from '../utils/image.js';
 import { logger } from '../utils/logger.js';
 import { getErrorMessage } from '../utils/errors.js';
 import {
   withRetry,
-  type RetryConfig,
   DEFAULT_RETRY_CONFIG,
 } from '../utils/retry.js';
 
@@ -694,6 +698,197 @@ export class Agent {
     return {
       available: this.toolRegistry.getToolCount(),
       used: this.state.toolCallCount,
+    };
+  }
+
+  // ============================================
+  // Vision Methods (Phase 12)
+  // ============================================
+
+  /**
+   * Send a message with an image to Claude
+   * BEGINNER NOTE: Claude can "see" images! Use this to ask questions about images.
+   *
+   * @param imagePath - Path to image file or URL
+   * @param question - What to ask about the image (optional)
+   * @param options - Optional chat options
+   * @returns Claude's response about the image
+   *
+   * @example
+   * ```typescript
+   * const response = await agent.chatWithImage(
+   *   './screenshot.png',
+   *   'What is shown in this image?'
+   * );
+   * ```
+   */
+  async chatWithImage(
+    imagePath: string,
+    question?: string,
+    options?: ChatOptions
+  ): Promise<string> {
+    try {
+      const startTime = Date.now();
+
+      // Load the image
+      logger.info(`Loading image: ${imagePath}`);
+      const image = await loadImage(imagePath);
+      const imageContent = toImageContent(image);
+
+      // Log estimated token cost
+      const estimatedTokens = estimateImageTokens(image);
+      logger.info(`Image loaded (estimated ${estimatedTokens} tokens)`);
+
+      // Add the image message to conversation
+      const prompt = question || 'Please describe this image.';
+      this.conversationManager.addImageMessage(imageContent, prompt);
+
+      // Run the agentic loop (same as regular chat)
+      const finalResponse = await this.agenticLoop(options);
+
+      // Update state
+      const responseTime = Date.now() - startTime;
+      this.state.lastActiveAt = new Date();
+
+      logger.success(`Image chat response time: ${responseTime}ms`);
+
+      return finalResponse;
+    } catch (error) {
+      logger.error('Failed to process image', error);
+      throw new Error(`Image chat failed: ${getErrorMessage(error)}`);
+    }
+  }
+
+  /**
+   * Send a message with multiple images to Claude
+   * BEGINNER NOTE: You can send multiple images in one message for comparison!
+   *
+   * @param imagePaths - Array of image file paths or URLs
+   * @param question - What to ask about the images
+   * @param options - Optional chat options
+   * @returns Claude's response about the images
+   *
+   * @example
+   * ```typescript
+   * const response = await agent.chatWithImages(
+   *   ['./before.png', './after.png'],
+   *   'What are the differences between these two images?'
+   * );
+   * ```
+   */
+  async chatWithImages(
+    imagePaths: string[],
+    question?: string,
+    options?: ChatOptions
+  ): Promise<string> {
+    try {
+      const startTime = Date.now();
+
+      // Load all images
+      logger.info(`Loading ${imagePaths.length} images...`);
+      const images: ImageContent[] = [];
+      let totalEstimatedTokens = 0;
+
+      for (const imagePath of imagePaths) {
+        const image = await loadImage(imagePath);
+        images.push(toImageContent(image));
+        totalEstimatedTokens += estimateImageTokens(image);
+      }
+
+      logger.info(`All images loaded (estimated ${totalEstimatedTokens} tokens total)`);
+
+      // Add the multi-image message to conversation
+      const prompt = question || 'Please describe these images.';
+      this.conversationManager.addMultiImageMessage(images, prompt);
+
+      // Run the agentic loop
+      const finalResponse = await this.agenticLoop(options);
+
+      // Update state
+      const responseTime = Date.now() - startTime;
+      this.state.lastActiveAt = new Date();
+
+      logger.success(`Multi-image chat response time: ${responseTime}ms`);
+
+      return finalResponse;
+    } catch (error) {
+      logger.error('Failed to process images', error);
+      throw new Error(`Multi-image chat failed: ${getErrorMessage(error)}`);
+    }
+  }
+
+  /**
+   * Send a message with an image using streaming response
+   * BEGINNER NOTE: Same as chatWithImage but streams the response
+   *
+   * @param imagePath - Path to image file or URL
+   * @param question - What to ask about the image
+   * @param callbacks - Streaming callbacks
+   * @param options - Optional chat options
+   * @returns The complete response text
+   */
+  async chatWithImageStream(
+    imagePath: string,
+    question: string | undefined,
+    callbacks: StreamCallbacks,
+    options?: ChatOptions
+  ): Promise<string> {
+    try {
+      const startTime = Date.now();
+
+      // Load the image
+      logger.info(`Loading image: ${imagePath}`);
+      const image = await loadImage(imagePath);
+      const imageContent = toImageContent(image);
+
+      // Log estimated token cost
+      const estimatedTokens = estimateImageTokens(image);
+      logger.info(`Image loaded (estimated ${estimatedTokens} tokens)`);
+
+      // Add the image message to conversation
+      const prompt = question || 'Please describe this image.';
+      this.conversationManager.addImageMessage(imageContent, prompt);
+
+      // Run the streaming agentic loop
+      const finalResponse = await this.agenticLoopStreaming(callbacks, options);
+
+      // Update state
+      const responseTime = Date.now() - startTime;
+      this.state.lastActiveAt = new Date();
+
+      logger.success(`Image chat response time: ${responseTime}ms`);
+
+      // Call onComplete callback
+      callbacks.onComplete?.(finalResponse);
+
+      return finalResponse;
+    } catch (error) {
+      logger.error('Failed to process image', error);
+      const err = error instanceof Error ? error : new Error(String(error));
+      callbacks.onError?.(err);
+      throw new Error(`Image chat failed: ${getErrorMessage(error)}`);
+    }
+  }
+
+  /**
+   * Load an image for inspection (without sending to Claude)
+   * BEGINNER NOTE: Use this to check image details before sending
+   *
+   * @param imagePath - Path to image file or URL
+   * @returns Image details including estimated token cost
+   */
+  async inspectImage(imagePath: string): Promise<{
+    source: string;
+    mediaType: string;
+    sizeBytes: number;
+    estimatedTokens: number;
+  }> {
+    const image = await loadImage(imagePath);
+    return {
+      source: image.source,
+      mediaType: image.mediaType,
+      sizeBytes: image.sizeBytes,
+      estimatedTokens: estimateImageTokens(image),
     };
   }
 
