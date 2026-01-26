@@ -18,7 +18,7 @@
 | [06-system-prompts.md](./06-system-prompts.md) | System Prompts | Agent behavior, personas, prompt engineering |
 | [07-context-management.md](./07-context-management.md) | Context Management | Token limits, context strategies, cost optimization |
 | [08-persistence.md](./08-persistence.md) | Persistence | Save/load conversations, session management |
-| *09-memory.md* | Memory & Web | Long-term memory, web search *(Coming in Phase 10)* |
+| [09-memory-websearch.md](./09-memory-websearch.md) | Memory & Web Search | Long-term memory, web search, provider pattern |
 | *10-production.md* | Production | Error handling, testing *(Coming in Phase 11)* |
 | *11-vision.md* | Vision | Multi-modal, images *(Coming in Phase 12)* |
 | *12-skills.md* | Skills System | Skill files, dynamic behaviors *(Coming in Phase 13)* |

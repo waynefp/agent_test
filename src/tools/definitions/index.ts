@@ -13,5 +13,14 @@ export { CalculatorTool, createCalculatorTool } from './CalculatorTool.js';
 export { FileSystemTool, createFileSystemTool } from './FileSystemTool.js';
 export { TaskTool, createTaskTool } from './TaskTool.js';
 
-// Future tools will be exported here:
-// Web search will be added in Phase 10 with a proper API
+// Phase 10 tools
+export { MemoryTool, createMemoryTool } from './MemoryTool.js';
+export {
+  WebSearchTool,
+  createWebSearchTool,
+  createMockWebSearchTool,
+  type SearchProvider,
+  type SearchResult,
+  MockSearchProvider,
+  DuckDuckGoProvider,
+} from './WebSearchTool.js';

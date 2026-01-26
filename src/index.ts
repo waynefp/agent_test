@@ -14,7 +14,13 @@ import { createTaskTracker } from './agent/TaskTracker.js';
 import { createTaskPersistence } from './persistence/TaskPersistence.js';
 import { startChatSession } from './cli/commands.js';
 import { getErrorMessage } from './utils/errors.js';
-import { createCalculatorTool, createFileSystemTool, createTaskTool } from './tools/definitions/index.js';
+import {
+  createCalculatorTool,
+  createFileSystemTool,
+  createTaskTool,
+  createMemoryTool,
+  createWebSearchTool,
+} from './tools/definitions/index.js';
 
 /**
  * Main function
@@ -42,7 +48,9 @@ async function main(): Promise<void> {
     const calculator = createCalculatorTool();
     const fileSystem = createFileSystemTool('./workspace');
     const taskTool = createTaskTool(taskTracker);
-    logger.success('Tools created: calculator, file_system, task_manager');
+    const memoryTool = createMemoryTool();  // Phase 10: Long-term memory
+    const webSearchTool = createWebSearchTool();  // Phase 10: Web search
+    logger.success('Tools created: calculator, file_system, task_manager, memory, web_search');
 
     // Create the agent WITH TOOLS
     logger.info('Creating agent with tools...');
@@ -52,7 +60,7 @@ async function main(): Promise<void> {
         // temperature: 0.7,  // Lower = more focused, higher = more creative
         // maxTokens: 4096,   // Maximum length of responses
       },
-      [calculator, fileSystem, taskTool]  // Pass all tools to the agent
+      [calculator, fileSystem, taskTool, memoryTool, webSearchTool]  // All tools
     );
     logger.success(`Agent created with ${agent.getAvailableTools().length} tool(s): ${agent.getAvailableTools().join(', ')}`);
 

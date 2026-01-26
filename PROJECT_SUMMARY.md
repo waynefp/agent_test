@@ -1,6 +1,6 @@
 # Agent SDK Learning Project - Progress Summary
 
-**Last Updated:** Phase 9 Complete - January 25, 2025
+**Last Updated:** Phase 10 Complete - January 25, 2025
 
 ## 📋 Table of Contents
 - [Project Purpose](#project-purpose)
@@ -37,8 +37,8 @@ This project follows a structured 12-phase learning journey for building AI agen
 | 7 | System Prompts | ✅ Complete | Agent behavior, prompt engineering |
 | 8 | Context Management | ✅ Complete | Token limits, summarization, cost optimization |
 | 9 | Persistence | ✅ Complete | Save/load conversations, session management |
-| 10 | Memory & Web Search | 🔄 Current | Long-term memory, external APIs |
-| 11 | Production Readiness | ⏳ Pending | Error handling, retries, testing |
+| 10 | Memory & Web Search | ✅ Complete | Long-term memory, external APIs |
+| 11 | Production Readiness | 🔄 Current | Error handling, retries, testing |
 | 12 | Vision & Multi-modal | ⏳ Pending | Image processing, multi-modal inputs |
 | 13 | Skills System | ⏳ Pending | Skill files, dynamic prompt loading |
 
@@ -86,7 +86,7 @@ Each feature is implemented as a **tool** that the agent decides when to use.
 
 **Your Role:** Beginner learning TypeScript/Node.js through hands-on development
 
-**Current Status:** ✅ Phase 1-9 Complete | 🔄 Phase 10 (Memory & Web Search) Next
+**Current Status:** ✅ Phase 1-10 Complete | 🔄 Phase 11 (Production Readiness) Next
 
 **GitHub Repository:** https://github.com/waynefp/agent_test
 
@@ -874,6 +874,79 @@ interface StreamCallbacks {
 
 ---
 
+## 🧠 Phase 10: Memory & Web Search
+
+**Started:** January 25, 2025
+**Status:** Complete
+**Goal:** Long-term memory and external data access
+
+### Learning Objectives
+
+- Long-term memory vs conversation history
+- Storing and retrieving facts across sessions
+- Web search integration patterns
+- Provider abstraction for flexibility
+
+### What We Built
+
+#### 1. MemoryStore (`src/persistence/MemoryStore.ts`)
+- Persistent storage for facts and information
+- Category-based organization
+- Search functionality
+- CRUD operations (create, read, update, delete)
+
+#### 2. MemoryTool (`src/tools/definitions/MemoryTool.ts`)
+- Store memories: category + key + content
+- Recall specific memories
+- Search across all memories
+- List by category
+- Delete memories
+
+#### 3. WebSearchTool (`src/tools/definitions/WebSearchTool.ts`)
+- Provider abstraction for swappable search backends
+- DuckDuckGo provider (default, no API key needed)
+- Mock provider for testing
+- Extensible for real APIs (Brave, SerpAPI)
+
+### Memory Operations
+
+| Operation | Description |
+|-----------|-------------|
+| `store` | Save a memory (category, key, content) |
+| `recall` | Get a specific memory by category and key |
+| `search` | Find memories by text search |
+| `list` | List all memories in a category |
+| `delete` | Remove a memory |
+
+### Key Files (Phase 10)
+```
+✅ src/persistence/MemoryStore.ts (new)
+✅ src/tools/definitions/MemoryTool.ts (new)
+✅ src/tools/definitions/WebSearchTool.ts (new - with providers)
+✅ src/tools/definitions/index.ts (updated)
+✅ src/index.ts (updated - register new tools)
+✅ learning/09-memory-websearch.md (new - learning guide)
+```
+
+### What You Learned (Phase 10)
+
+**Memory Architecture:**
+- Difference between conversation history and long-term memory
+- Category/key organization patterns
+- Persistent storage with JSON
+
+**Provider Pattern:**
+- Abstraction for swappable implementations
+- Interface-based design
+- Easy to extend with new providers
+
+**Web Search:**
+- API integration patterns
+- Result normalization
+- Error handling for external services
+
+---
+
 ## 📁 File Structure (Detailed)
 
 ### Source Code (src/)
@@ -1314,6 +1387,7 @@ A separate **Learning Guide** has been created to serve as a standalone referenc
 | `06-system-prompts.md` | Prompt engineering, personas |
 | `07-context-management.md` | Token limits, context strategies |
 | `08-persistence.md` | Save/load conversations, sessions |
+| `09-memory-websearch.md` | Long-term memory, web search |
 
 Each file includes:
 - Explanations of concepts
@@ -1338,7 +1412,7 @@ Each file includes:
 | Phase 7: System Prompts | ✅ Complete | Jan 23, 2025 | Agent behavior customization |
 | Phase 8: Context Management | ✅ Complete | Jan 25, 2025 | Token limits, context strategies |
 | Phase 9: Persistence | ✅ Complete | Jan 25, 2025 | Save/load conversations |
-| Phase 10: Memory & Web | ⏳ Pending | - | Long-term memory, web search |
+| Phase 10: Memory & Web | ✅ Complete | Jan 25, 2025 | Long-term memory, web search |
 | Phase 11: Production | ⏳ Pending | - | Error handling, testing |
 | Phase 12: Vision | ⏳ Pending | - | Multi-modal, images |
 | Phase 13: Skills | ⏳ Pending | - | Skill files, dynamic behaviors |
@@ -1440,6 +1514,6 @@ A: Separation of concerns. Each file has one job, making code easier to understa
 
 ---
 
-**Last Updated:** Phase 9 (Persistence) Complete - January 25, 2025
-**Next Update:** After Phase 10 begins or completes
+**Last Updated:** Phase 10 (Memory & Web Search) Complete - January 25, 2025
+**Next Update:** After Phase 11 begins or completes
 **Learning Guide:** See `learning/` folder for standalone reference materials
