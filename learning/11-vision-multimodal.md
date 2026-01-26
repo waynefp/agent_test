@@ -12,13 +12,42 @@
 
 ### Claude Can "See"
 
-Claude is a multi-modal AI - it can process both text AND images. This enables:
+Claude is a multi-modal AI - it can process both text AND images.
 
-- **Image description** - "What's in this photo?"
-- **Document analysis** - OCR, reading diagrams, charts
-- **Comparison** - "What's different between these two images?"
-- **Visual reasoning** - Understanding spatial relationships
-- **Code review** - Reading screenshots of code
+### What the Agent Can Do
+
+| Capability | Example |
+|------------|---------|
+| **Describe images** | "What's in this photo?" → Detailed description |
+| **Read text (OCR)** | Screenshot of error message → Extracts and explains the text |
+| **Analyze code screenshots** | Image of code → Identifies bugs, suggests fixes |
+| **Understand diagrams** | Architecture diagram → Explains the data flow |
+| **Compare images** | Before/after screenshots → Lists differences |
+| **Recreate from screenshots** | Website screenshot → Generates HTML/CSS to match the design |
+| **Analyze UI/UX** | App screenshot → Feedback on layout, accessibility |
+
+### What the Agent Cannot Do
+
+| Limitation | Explanation |
+|------------|-------------|
+| **Generate images** | Claude only outputs text (including code) |
+| **Edit images** | Cannot modify or alter images |
+| **Identify specific people** | Won't identify individuals by name |
+
+### The "Recreate a Website" Example
+
+A powerful use case - show Claude a screenshot and ask it to recreate the design:
+
+```
+/image ./website-screenshot.png Recreate this layout in HTML and CSS
+```
+
+Claude will:
+1. Analyze the visual layout, colors, spacing, typography
+2. Identify components (header, nav, cards, footer)
+3. Generate HTML/CSS code that approximates the design
+
+It won't be pixel-perfect, but it understands visual hierarchy, color schemes, and layout patterns well enough to produce a solid starting point.
 
 ### How Image Processing Works
 
