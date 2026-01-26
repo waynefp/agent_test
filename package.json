@@ -10,7 +10,10 @@
     "test-tools": "tsx src/test-tools.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "jest",
+    "test": "tsx tests/run-tests.ts",
+    "test:calculator": "tsx tests/tools/calculator.test.ts",
+    "test:memory": "tsx tests/tools/memory.test.ts",
+    "test:retry": "tsx tests/utils/retry.test.ts",
     "test:watch": "jest --watch",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\""

@@ -12,6 +12,23 @@ import type { Task } from './task.types.js';
 import type { Message } from './conversation.types.js';
 
 /**
+ * Configuration for retry behavior (Phase 11)
+ */
+export interface RetryOptions {
+  /** Maximum number of retry attempts (default: 3) */
+  maxRetries?: number;
+
+  /** Initial delay in milliseconds before first retry (default: 1000) */
+  initialDelayMs?: number;
+
+  /** Maximum delay in milliseconds (default: 30000) */
+  maxDelayMs?: number;
+
+  /** Whether to retry on network errors (default: true) */
+  retryOnNetworkError?: boolean;
+}
+
+/**
  * Configuration for creating an agent
  * BEGINNER NOTE: These settings control how the agent behaves
  */
@@ -33,6 +50,9 @@ export interface AgentConfig {
 
   /** Whether to enable task tracking */
   enableTaskTracking?: boolean;
+
+  /** Retry configuration for API calls (Phase 11) */
+  retryConfig?: RetryOptions;
 }
 
 /**

@@ -44,6 +44,11 @@ import type { AgentConfig, ChatOptions, AgentState, StreamCallbacks } from '../t
 import type { Message, ToolUseContent } from '../types/conversation.types.js';
 import { logger } from '../utils/logger.js';
 import { getErrorMessage } from '../utils/errors.js';
+import {
+  withRetry,
+  type RetryConfig,
+  DEFAULT_RETRY_CONFIG,
+} from '../utils/retry.js';
 
 /**
  * Agent class with tool support
@@ -225,8 +230,26 @@ export class Agent {
 
       logger.agent('Sending request to Claude API...');
 
-      // Call Claude
-      const response = await this.client.messages.create(params);
+      // Call Claude with retry logic (Phase 11)
+      const retryResult = await withRetry(
+        () => this.client.messages.create(params),
+        {
+          ...DEFAULT_RETRY_CONFIG,
+          ...this.config.retryConfig,
+          onRetry: (attempt, error, nextDelayMs) => {
+            logger.warn(
+              `API call failed (attempt ${attempt}), retrying in ${nextDelayMs}ms: ${error.message}`
+            );
+          },
+        }
+      );
+
+      if (!retryResult.success || !retryResult.data) {
+        const errorMsg = retryResult.error?.message || 'Unknown API error';
+        throw new Error(`API call failed after ${retryResult.attempts} attempts: ${errorMsg}`);
+      }
+
+      const response = retryResult.data;
 
       // Update token count
       this.state.totalTokensUsed += response.usage.input_tokens + response.usage.output_tokens;
@@ -542,8 +565,27 @@ export class Agent {
 
       logger.agent('Starting streaming request to Claude API...');
 
-      // Create streaming request
-      const stream = this.client.messages.stream(params);
+      // Create streaming request with retry logic (Phase 11)
+      // Note: For streaming, we retry the initial connection, not the entire stream
+      const retryResult = await withRetry(
+        async () => this.client.messages.stream(params),
+        {
+          ...DEFAULT_RETRY_CONFIG,
+          ...this.config.retryConfig,
+          onRetry: (attempt, error, nextDelayMs) => {
+            logger.warn(
+              `Streaming API call failed (attempt ${attempt}), retrying in ${nextDelayMs}ms: ${error.message}`
+            );
+          },
+        }
+      );
+
+      if (!retryResult.success || !retryResult.data) {
+        const errorMsg = retryResult.error?.message || 'Unknown API error';
+        throw new Error(`Streaming API call failed after ${retryResult.attempts} attempts: ${errorMsg}`);
+      }
+
+      const stream = retryResult.data;
 
       // Collect the response
       let currentText = '';
