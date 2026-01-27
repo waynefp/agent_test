@@ -170,7 +170,7 @@ async function handleCommand(
     // ============================================
 
     case '/image':
-      return await handleImageCommand(args, agent);
+      return await handleImageCommand(args, agent, command);
 
     default:
       displayError(`Unknown command: ${cmd}`);
@@ -713,14 +713,51 @@ function displaySessionHelp(): void {
 // ============================================
 
 /**
+ * Parse image command arguments, handling quoted paths
+ * BEGINNER NOTE: Paths with spaces need quotes, e.g., "/image "C:\My Photos\pic.jpg" What is this?"
+ *
+ * @param rawArgs - The raw argument string (everything after /image)
+ * @returns { path: string, question?: string } or null if invalid
+ */
+function parseImageArgs(rawArgs: string): { path: string; question?: string } | null {
+  const trimmed = rawArgs.trim();
+  if (!trimmed) return null;
+
+  // Check if path is quoted
+  if (trimmed.startsWith('"')) {
+    // Find the closing quote
+    const endQuote = trimmed.indexOf('"', 1);
+    if (endQuote === -1) {
+      // No closing quote - treat entire string as path
+      return { path: trimmed.slice(1) };
+    }
+    const path = trimmed.slice(1, endQuote);
+    const rest = trimmed.slice(endQuote + 1).trim();
+    return { path, question: rest || undefined };
+  }
+
+  // No quotes - split on first space
+  const spaceIndex = trimmed.indexOf(' ');
+  if (spaceIndex === -1) {
+    return { path: trimmed };
+  }
+
+  return {
+    path: trimmed.slice(0, spaceIndex),
+    question: trimmed.slice(spaceIndex + 1).trim() || undefined,
+  };
+}
+
+/**
  * Handle /image command
  * BEGINNER NOTE: Send images to Claude for analysis
  *
  * @param args - Command arguments
  * @param agent - Agent instance
+ * @param rawCommand - The full raw command string
  * @returns true to continue chat loop
  */
-async function handleImageCommand(args: string[], agent: Agent): Promise<boolean> {
+async function handleImageCommand(args: string[], agent: Agent, rawCommand?: string): Promise<boolean> {
   // No args - show help
   if (args.length === 0) {
     displayImageHelp();
@@ -735,17 +772,29 @@ async function handleImageCommand(args: string[], agent: Agent): Promise<boolean
     return true;
   }
 
-  if (subCommand === 'info' && args.length > 1) {
-    // Inspect image without sending
-    return await handleImageInspect(args.slice(1).join(' '), agent);
+  // For 'info' subcommand, rejoin args to handle spaces
+  if (subCommand === 'info') {
+    const infoArgs = rawCommand ? rawCommand.replace(/^\/image\s+info\s*/i, '') : args.slice(1).join(' ');
+    const parsed = parseImageArgs(infoArgs);
+    if (!parsed) {
+      displayError('Please provide an image path');
+      displaySystemMessage('Usage: /image info <path> or /image info "<path with spaces>"');
+      return true;
+    }
+    return await handleImageInspect(parsed.path, agent);
   }
 
-  // Otherwise, treat as image path with optional question
-  // Format: /image <path> [question...]
-  const imagePath = args[0];
-  const question = args.length > 1 ? args.slice(1).join(' ') : undefined;
+  // Parse the image path and question
+  // Use raw command if available to preserve spaces in quoted paths
+  const imageArgs = rawCommand ? rawCommand.replace(/^\/image\s*/i, '') : args.join(' ');
+  const parsed = parseImageArgs(imageArgs);
 
-  return await handleImageChat(imagePath, question, agent);
+  if (!parsed) {
+    displayImageHelp();
+    return true;
+  }
+
+  return await handleImageChat(parsed.path, parsed.question, agent);
 }
 
 /**
@@ -845,6 +894,10 @@ function displayImageHelp(): void {
   displaySystemMessage('  /image ./photo.jpg');
   displaySystemMessage('  /image ./diagram.png What does this show?');
   displaySystemMessage('  /image https://example.com/image.jpg Describe this');
+  displaySeparator();
+  displaySystemMessage('Paths with spaces - use quotes:');
+  displaySystemMessage('  /image "C:\\My Photos\\vacation.jpg" What is this?');
+  displaySystemMessage('  /image "C:\\Users\\name\\Pictures\\From Phone\\pic.jpg"');
   displaySeparator();
   displaySystemMessage(`Supported formats: ${getSupportedExtensions().join(', ')}`);
   displaySeparator();
