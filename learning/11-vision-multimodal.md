@@ -439,10 +439,10 @@ await agent.chatWithImages(
 
 ## What's Next?
 
-In **Phase 13 (Skills System)**, you'll learn to:
-- Define agent behaviors in skill files
-- Load skills dynamically
-- Create modular, reusable agent capabilities
-- Combine vision with other skills
+In **Phase 13 (Memory Files & Configuration)**, you'll learn to:
+- The 5 types of CLAUDE.md files
+- When and where to use each type
+- Priority and precedence rules
+- Best practices for organizing instructions
 
-The vision capabilities you learned here can be combined with skills to create specialized image analysis agents!
+Understanding memory files is foundational before building the Skills system in Phase 14!

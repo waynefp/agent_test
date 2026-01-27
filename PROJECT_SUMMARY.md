@@ -22,7 +22,7 @@
 
 ## 🗺️ Complete Roadmap
 
-This project follows a structured 12-phase learning journey for building AI agents.
+This project follows a structured 14-phase learning journey for building AI agents.
 
 ### Phase Overview
 
@@ -40,7 +40,8 @@ This project follows a structured 12-phase learning journey for building AI agen
 | 10 | Memory & Web Search | ✅ Complete | Long-term memory, external APIs |
 | 11 | Production Readiness | ✅ Complete | Error handling, retries, testing |
 | 12 | Vision & Multi-modal | ✅ Complete | Image processing, multi-modal inputs |
-| 13 | Skills System | 🔄 Next | Skill files, dynamic prompt loading |
+| 13 | Memory Files | 🔄 Next | CLAUDE.md types, configuration, settings |
+| 14 | Skills System | ⏳ Pending | Skill files, dynamic prompt loading |
 
 ### Future Phases (Documented, Not Detailed)
 - Multi-agent patterns
@@ -86,7 +87,7 @@ Each feature is implemented as a **tool** that the agent decides when to use.
 
 **Your Role:** Beginner learning TypeScript/Node.js through hands-on development
 
-**Current Status:** ✅ Phase 1-12 Complete | 🔄 Phase 13 (Skills System) Next
+**Current Status:** ✅ Phase 1-12 Complete | 🔄 Phase 13 (Memory Files) Next
 
 **GitHub Repository:** https://github.com/waynefp/agent_test
 
@@ -1586,6 +1587,7 @@ A separate **Learning Guide** has been created to serve as a standalone referenc
 | `09-memory-websearch.md` | Long-term memory, web search |
 | `10-production.md` | Error handling, retries, testing |
 | `11-vision-multimodal.md` | Image processing, multi-modal |
+| `12-memory-files.md` | CLAUDE.md types, configuration |
 
 Each file includes:
 - Explanations of concepts
@@ -1613,7 +1615,8 @@ Each file includes:
 | Phase 10: Memory & Web | ✅ Complete | Jan 25, 2025 | Long-term memory, web search |
 | Phase 11: Production | ✅ Complete | Jan 25, 2025 | Retry logic, testing |
 | Phase 12: Vision | ✅ Complete | Jan 26, 2025 | Multi-modal, images |
-| Phase 13: Skills | ⏳ Pending | - | Skill files, dynamic behaviors |
+| Phase 13: Memory Files | 🔄 In Progress | Jan 27, 2025 | CLAUDE.md types, configuration |
+| Phase 14: Skills | ⏳ Pending | - | Skill files, dynamic behaviors |
 
 ---
 
