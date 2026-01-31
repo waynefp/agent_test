@@ -46,6 +46,59 @@ const EXTENSION_TO_MEDIA_TYPE: Record<string, ImageMediaType> = {
 const MAX_IMAGE_SIZE_BYTES = 20 * 1024 * 1024;
 
 /**
+ * Detect image media type from file content (magic bytes)
+ * BEGINNER NOTE: Files have "magic bytes" at the start that identify their true format.
+ * This is more reliable than file extensions which can be wrong.
+ *
+ * @param buffer - The file buffer
+ * @returns The detected media type or null if unknown
+ */
+function detectMediaTypeFromBuffer(buffer: Buffer): ImageMediaType | null {
+  if (buffer.length < 12) return null;
+
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47
+  ) {
+    return 'image/png';
+  }
+
+  // JPEG: FF D8 FF
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return 'image/jpeg';
+  }
+
+  // GIF: 47 49 46 38 ("GIF8")
+  if (
+    buffer[0] === 0x47 &&
+    buffer[1] === 0x49 &&
+    buffer[2] === 0x46 &&
+    buffer[3] === 0x38
+  ) {
+    return 'image/gif';
+  }
+
+  // WebP: RIFF....WEBP
+  if (
+    buffer[0] === 0x52 &&
+    buffer[1] === 0x49 &&
+    buffer[2] === 0x46 &&
+    buffer[3] === 0x46 &&
+    buffer[8] === 0x57 &&
+    buffer[9] === 0x45 &&
+    buffer[10] === 0x42 &&
+    buffer[11] === 0x50
+  ) {
+    return 'image/webp';
+  }
+
+  return null;
+}
+
+/**
  * Get the media type from a file extension
  * BEGINNER NOTE: Determines the image format from the filename
  *
@@ -112,16 +165,31 @@ export async function loadImageFromFile(filePath: string): Promise<LoadedImage> 
     throw new Error(`Image file not found: ${absolutePath}`);
   }
 
-  // Check file extension
-  const mediaType = getMediaTypeFromPath(absolutePath);
+  // Read file first so we can detect actual format
+  const buffer = await fs.readFile(absolutePath);
+  const sizeBytes = buffer.length;
+
+  // Detect actual media type from file content (magic bytes)
+  // This is more reliable than file extension
+  let mediaType = detectMediaTypeFromBuffer(buffer);
+
+  // Fall back to extension if magic bytes don't match
+  if (!mediaType) {
+    mediaType = getMediaTypeFromPath(absolutePath);
+  }
+
   if (!mediaType) {
     const supported = getSupportedExtensions().join(', ');
     throw new Error(`Unsupported image type. Supported: ${supported}`);
   }
 
-  // Read file
-  const buffer = await fs.readFile(absolutePath);
-  const sizeBytes = buffer.length;
+  // Log if extension doesn't match actual format
+  const extensionType = getMediaTypeFromPath(absolutePath);
+  if (extensionType && extensionType !== mediaType) {
+    logger.warn(
+      `File extension suggests ${extensionType} but actual format is ${mediaType}. Using detected format.`
+    );
+  }
 
   // Check size
   if (!isValidImageSize(sizeBytes)) {
