@@ -9,7 +9,7 @@
 
 import { Agent } from '../agent/Agent.js';
 import { TaskTracker } from '../agent/TaskTracker.js';
-import { getUserMessage, confirmAction } from './prompts.js';
+import { getUserMessage, confirmAction, getSessionName } from './prompts.js';
 import {
   displayWelcome,
   displayHelp,
@@ -77,9 +77,28 @@ async function handleCommand(
       return true;
 
     case '/exit':
-    case '/quit':
+    case '/quit': {
+      // Check if there's a conversation worth saving
+      const exitState = agent.getState();
+      if (exitState.messageCount > 0) {
+        const wantToSave = await confirmAction(
+          `You have ${exitState.messageCount} messages in this conversation. Would you like to save before exiting?`
+        );
+        if (wantToSave) {
+          const sessionName = await getSessionName();
+          if (sessionName) {
+            try {
+              const savedPath = await agent.saveConversation(sessionName);
+              displaySuccess(`Conversation saved to: ${savedPath}`);
+            } catch (error) {
+              displayError(`Failed to save: ${error instanceof Error ? error.message : String(error)}`);
+            }
+          }
+        }
+      }
       displaySystemMessage('Goodbye! Thanks for chatting.');
       return false;
+    }
 
     case '/clear':
       const confirmed = await confirmAction(

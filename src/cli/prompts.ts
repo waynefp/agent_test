@@ -79,6 +79,25 @@ export async function selectOption(
 }
 
 /**
+ * Get a session name for saving conversations
+ * BEGINNER NOTE: Ask the user for a name to save the conversation
+ *
+ * @returns The session name or empty string if cancelled
+ */
+export async function getSessionName(): Promise<string> {
+  const answers = await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'sessionName',
+      message: 'Enter a name for this session (or press Enter to cancel):',
+      default: `session-${new Date().toISOString().slice(0, 10)}`,
+    },
+  ]);
+
+  return answers.sessionName.trim();
+}
+
+/**
  * Get the user's API key
  * BEGINNER NOTE: Ask for the API key with masked input (like a password)
  *
