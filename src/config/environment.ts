@@ -84,7 +84,7 @@ export function getEnvironmentConfig(): EnvironmentConfig {
 
     // Optional with defaults
     anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20250929',
-    maxTokens: parseInt(process.env.MAX_TOKENS || '2048', 10),
+    maxTokens: parseInt(process.env.MAX_TOKENS || '8192', 10),
 
     // Data directories (relative to project root)
     conversationsDir: process.env.CONVERSATIONS_DIR || join(_projectRoot, 'data', 'conversations'),

@@ -88,6 +88,96 @@ export class MockSearchProvider implements SearchProvider {
 }
 
 /**
+ * Perplexity AI Search Provider
+ * BEGINNER NOTE: Perplexity provides AI-powered search with summaries and citations.
+ * Requires a PERPLEXITY_API_KEY environment variable.
+ */
+export class PerplexityProvider implements SearchProvider {
+  name = 'perplexity';
+  private apiKey: string;
+
+  constructor(apiKey?: string) {
+    this.apiKey = apiKey || process.env.PERPLEXITY_API_KEY || '';
+    if (!this.apiKey) {
+      throw new Error('Perplexity API key not found. Set PERPLEXITY_API_KEY environment variable.');
+    }
+  }
+
+  async search(query: string, maxResults: number = 5): Promise<SearchResult[]> {
+    try {
+      const response = await fetch('https://api.perplexity.ai/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'sonar',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a helpful search assistant. Provide concise, factual answers with sources.',
+            },
+            {
+              role: 'user',
+              content: query,
+            },
+          ],
+          max_tokens: 1024,
+          return_citations: true,
+          return_related_questions: false,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Perplexity API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json() as {
+        choices?: Array<{ message?: { content?: string } }>;
+        citations?: string[];
+      };
+
+      const results: SearchResult[] = [];
+      const content = data.choices?.[0]?.message?.content || '';
+      const citations = data.citations || [];
+
+      // Add the main AI-generated answer
+      if (content) {
+        results.push({
+          title: `Perplexity Answer: ${query.substring(0, 50)}${query.length > 50 ? '...' : ''}`,
+          url: 'https://www.perplexity.ai',
+          snippet: content,
+          source: 'Perplexity AI',
+        });
+      }
+
+      // Add citations as individual results
+      for (let i = 0; i < Math.min(citations.length, maxResults - 1); i++) {
+        const citation = citations[i];
+        try {
+          const urlObj = new URL(citation);
+          results.push({
+            title: `Source ${i + 1}: ${urlObj.hostname}`,
+            url: citation,
+            snippet: `Referenced source from ${urlObj.hostname}`,
+            source: urlObj.hostname,
+          });
+        } catch {
+          // Invalid URL, skip
+        }
+      }
+
+      return results.slice(0, maxResults);
+    } catch (error) {
+      logger.error('Perplexity search failed:', error);
+      throw error;
+    }
+  }
+}
+
+/**
  * DuckDuckGo Instant Answer Provider
  * BEGINNER NOTE: Uses DuckDuckGo's free instant answer API
  * Limited but doesn't require an API key
@@ -181,8 +271,17 @@ export class WebSearchTool extends BaseTool {
 
   constructor(provider?: SearchProvider) {
     super();
-    // Default to DuckDuckGo, fall back to mock if needed
-    this.provider = provider || new DuckDuckGoProvider();
+    if (provider) {
+      this.provider = provider;
+    } else if (process.env.PERPLEXITY_API_KEY) {
+      // Use Perplexity if API key is available (best results)
+      this.provider = new PerplexityProvider();
+      logger.info('Web search using Perplexity AI provider');
+    } else {
+      // Fall back to DuckDuckGo (free but limited)
+      this.provider = new DuckDuckGoProvider();
+      logger.info('Web search using DuckDuckGo provider (set PERPLEXITY_API_KEY for better results)');
+    }
   }
 
   /**
@@ -259,4 +358,12 @@ export function createWebSearchTool(provider?: SearchProvider): WebSearchTool {
  */
 export function createMockWebSearchTool(): WebSearchTool {
   return new WebSearchTool(new MockSearchProvider());
+}
+
+/**
+ * Create a Perplexity-powered web search tool
+ * @param apiKey - Perplexity API key (or uses PERPLEXITY_API_KEY env var)
+ */
+export function createPerplexitySearchTool(apiKey?: string): WebSearchTool {
+  return new WebSearchTool(new PerplexityProvider(apiKey));
 }

@@ -22,6 +22,30 @@ export function createAnthropicClient(): Anthropic {
 }
 
 /**
+ * Get the current date formatted for the system prompt
+ * BEGINNER NOTE: This ensures the agent always knows today's date
+ */
+function getCurrentDateString(): string {
+  const now = new Date();
+  return now.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
+/**
+ * Generate the default system prompt with current date
+ * BEGINNER NOTE: Including the date helps the agent search for current information
+ */
+function getDefaultSystemPrompt(): string {
+  return `You are a helpful AI assistant. You are friendly, concise, and knowledgeable.
+
+Today's date is ${getCurrentDateString()}. When searching for current information, use this date to find the most recent and relevant results.`;
+}
+
+/**
  * Default configuration for the agent
  * BEGINNER NOTE: These are sensible defaults you can override when creating an agent
  */
@@ -31,7 +55,7 @@ export const DEFAULT_AGENT_CONFIG: AgentConfig = {
   temperature: 1.0, // 0.0 = deterministic, 1.0 = creative
   enableTools: false, // Will enable in Phase 4
   enableTaskTracking: false, // Will enable in Phase 5
-  systemPrompt: `You are a helpful AI assistant. You are friendly, concise, and knowledgeable.`,
+  systemPrompt: getDefaultSystemPrompt(),
 };
 
 /**
