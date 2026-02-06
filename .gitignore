@@ -10,6 +10,9 @@ dist/
 .env.local
 .env.*.local
 
+# MCP config (contains API keys!)
+.claude/mcp.json
+
 # Logs
 logs/
 *.log
