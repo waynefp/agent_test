@@ -24,3 +24,6 @@ export {
   MockSearchProvider,
   DuckDuckGoProvider,
 } from './WebSearchTool.js';
+
+// Phase 15 tools
+export { GoogleTrendsTool, createGoogleTrendsTool } from './GoogleTrendsTool.js';
