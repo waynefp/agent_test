@@ -94,6 +94,25 @@ export class WorkerAgent {
     return this.role.name;
   }
 
+  /**
+   * Get the model name for this agent
+   *
+   * BEGINNER NOTE: Allows individual agents to use different models.
+   * For example, fact-checking can use Haiku (cheaper) while research
+   * uses Sonnet (smarter). Falls back to the environment default.
+   */
+  private getModelName(): string {
+    if (this.role.model === 'haiku') {
+      return 'claude-3-5-haiku-20241022';
+    } else if (this.role.model === 'opus') {
+      return 'claude-opus-4-20250514';
+    } else if (this.role.model === 'sonnet') {
+      return 'claude-3-7-sonnet-20250219';
+    }
+    // Default to environment config if no model specified
+    return ANTHROPIC_MODEL;
+  }
+
   /** Check if this agent has tools */
   hasTools(): boolean {
     return this.toolRegistry !== null && this.toolRegistry.getToolCount() > 0;
@@ -173,7 +192,7 @@ export class WorkerAgent {
     const retryResult = await withRetry(
       () =>
         this.client.messages.create({
-          model: ANTHROPIC_MODEL,
+          model: this.getModelName(),
           max_tokens: this.role.maxTokens || MAX_TOKENS,
           temperature: this.role.temperature ?? 1.0,
           system: this.role.systemPrompt,
@@ -265,7 +284,7 @@ export class WorkerAgent {
       const retryResult = await withRetry(
         () =>
           this.client.messages.create({
-            model: ANTHROPIC_MODEL,
+            model: this.getModelName(),
             max_tokens: this.role.maxTokens || MAX_TOKENS,
             temperature: this.role.temperature ?? 1.0,
             system: this.role.systemPrompt,

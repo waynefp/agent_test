@@ -42,10 +42,12 @@ Thumbs.db
 # Data files (might contain sensitive conversation data)
 data/conversations/*.json
 data/tasks/*.json
+data/briefings/*
 
 # Keep the directories but not the files
 !data/conversations/.gitkeep
 !data/tasks/.gitkeep
+!data/briefings/.gitkeep
 
 # Temporary files
 *.tmp

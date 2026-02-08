@@ -33,6 +33,14 @@ export interface AgentRole {
   maxTokens?: number;
 
   /**
+   * Optional model to use for this agent
+   * BEGINNER NOTE: Defaults to 'sonnet' if not specified.
+   * Use 'haiku' for cheaper, mechanical tasks (fact-checking, formatting).
+   * Options: 'haiku' | 'sonnet' | 'opus'
+   */
+  model?: 'haiku' | 'sonnet' | 'opus';
+
+  /**
    * Tools this agent can use (optional)
    * BEGINNER NOTE: Research agents get tools like web search and
    * Google Trends. Analysis agents typically don't need tools -
