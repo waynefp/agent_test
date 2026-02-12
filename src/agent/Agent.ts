@@ -65,7 +65,7 @@ export class Agent {
   private toolExecutor: ToolExecutor;
   private contextManager: ContextManager;
   private conversationPersistence: ConversationPersistence;
-  private config: AgentConfig;
+  public config: AgentConfig; // Public for CLI access to thinking settings (Phase 16)
   private state: AgentState;
   private currentPersona: Persona;
   private contextSummary: string | null = null; // Holds summary from trimmed messages
@@ -221,9 +221,11 @@ export class Agent {
       const messages = this.conversationManager.toAnthropicFormat();
 
       // Prepare API request
+      // BEGINNER NOTE: We merge config with options, allowing per-request overrides
       const params: any = createMessageParams(messages, {
         ...this.config,
         systemPrompt: options?.systemPrompt || this.config.systemPrompt,
+        outputSchema: options?.outputSchema || this.config.outputSchema, // Phase 17
       });
 
       // Add tools if enabled
@@ -258,6 +260,21 @@ export class Agent {
       // Update token count
       this.state.totalTokensUsed += response.usage.input_tokens + response.usage.output_tokens;
       logger.info(`Tokens used: ${response.usage.input_tokens} in, ${response.usage.output_tokens} out`);
+
+      // Extract and display thinking blocks if present (Phase 16)
+      // BEGINNER NOTE: Extended thinking shows Claude's step-by-step reasoning
+      // before the final answer. This helps debug complex reasoning tasks.
+      // Note: Using 'any' here because thinking blocks are not yet in SDK types
+      const thinkingBlocks = response.content.filter(
+        (block: any) => block.type === 'thinking'
+      );
+
+      if (thinkingBlocks.length > 0 && this.config.thinkingEnabled) {
+        logger.debug('[Agent] Extended thinking used:');
+        for (const thinking of thinkingBlocks) {
+          logger.debug(`[Thinking] ${(thinking as any).thinking}`);
+        }
+      }
 
       // Add assistant's response to conversation
       this.conversationManager.addAssistantResponse(response);
@@ -476,6 +493,89 @@ export class Agent {
       })
       .filter(line => line.length > 0)
       .join('\n\n');
+  }
+
+  /**
+   * Chat with the agent and get structured JSON output (Phase 17)
+   * BEGINNER NOTE: Use this when you need type-safe data extraction from conversations.
+   * For example, extracting contact info, parsing documents, or getting structured reports.
+   *
+   * Example:
+   * ```typescript
+   * const contactSchema = z.object({
+   *   name: z.string(),
+   *   email: z.string().email(),
+   * });
+   *
+   * const result = await agent.chatStructured(
+   *   "Extract: John Doe, john@example.com",
+   *   contactSchema
+   * );
+   *
+   * if (result.success) {
+   *   console.log(result.data.name); // "John Doe"
+   * }
+   * ```
+   *
+   * @param userMessage - The message to send
+   * @param outputSchema - Zod schema for expected output structure
+   * @param options - Optional chat configuration
+   * @returns Structured response with validated data or error
+   */
+  async chatStructured<T>(
+    userMessage: string,
+    outputSchema: import('zod').ZodSchema<T>,
+    options?: Omit<ChatOptions, 'outputSchema'>
+  ): Promise<import('../types/agent.types.js').StructuredAgentResponse<T>> {
+    // Import utilities at runtime to avoid circular dependencies
+    const { tryParseStructured } = await import('../utils/json.js');
+
+    // Merge outputSchema into options
+    const mergedOptions: ChatOptions = {
+      ...options,
+      outputSchema,
+    };
+
+    try {
+      // Use existing chat() method with outputSchema in options
+      // BEGINNER NOTE: We reuse chat() to handle the API call,
+      // then parse and validate the response as JSON
+      const rawText = await this.chat(userMessage, mergedOptions);
+
+      // Parse and validate the structured output
+      const result = tryParseStructured(rawText, outputSchema);
+
+      if (result.success) {
+        return {
+          success: true,
+          data: result.data,
+          rawText,
+          metadata: {
+            model: this.config.model,
+            tokensUsed: this.state.totalTokensUsed,
+          },
+        };
+      } else {
+        return {
+          success: false,
+          error: result.error,
+          rawText,
+          validationErrors: result.validationErrors,
+          metadata: {
+            model: this.config.model,
+            tokensUsed: this.state.totalTokensUsed,
+          },
+        };
+      }
+    } catch (error) {
+      // Handle any unexpected errors
+      logger.error('[Agent] chatStructured error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        rawText: '',
+      };
+    }
   }
 
   /**

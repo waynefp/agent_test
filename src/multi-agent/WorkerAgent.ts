@@ -197,6 +197,23 @@ export class WorkerAgent {
           temperature: this.role.temperature ?? 1.0,
           system: this.role.systemPrompt,
           messages: [{ role: 'user', content: userMessage }],
+
+          // Extended Thinking support (Phase 16)
+          // BEGINNER NOTE: If this agent has thinking enabled, Claude will
+          // show its step-by-step reasoning before the final answer
+          ...(this.role.thinkingEnabled && {
+            thinking: {
+              type: 'enabled',
+              budget_tokens: this.role.thinkingBudgetTokens || 10000,
+            },
+          }),
+
+          // Structured Output support (Phase 17)
+          // BEGINNER NOTE: If this agent has an output schema, Claude will
+          // return JSON instead of plain text
+          ...(this.role.outputSchema && {
+            response_format: { type: 'json_object' },
+          }),
         }),
       {
         ...DEFAULT_RETRY_CONFIG,
@@ -226,6 +243,29 @@ export class WorkerAgent {
     const tokensUsed =
       response.usage.input_tokens + response.usage.output_tokens;
 
+    // Validate structured output if schema provided (Phase 17)
+    // BEGINNER NOTE: If this agent has an output schema, we validate
+    // the JSON against it. Validation failures don't stop the pipeline -
+    // we log the error and continue with raw text.
+    let structuredOutput: unknown | undefined;
+    let validationError: import('zod').ZodError | undefined;
+
+    if (this.role.outputSchema) {
+      const { tryParseStructured } = await import('../utils/json.js');
+      const result = tryParseStructured(output, this.role.outputSchema);
+
+      if (result.success) {
+        structuredOutput = result.data;
+        logger.info(`[${this.role.name}] Structured output validated successfully`);
+      } else {
+        validationError = result.validationErrors;
+        logger.warn(
+          `[${this.role.name}] Output validation failed: ${result.error}`
+        );
+        // Don't throw - let pipeline continue with raw text
+      }
+    }
+
     logger.info(
       `[${this.role.name}] Completed in ${duration}ms (${tokensUsed} tokens)`
     );
@@ -236,6 +276,8 @@ export class WorkerAgent {
       success: true,
       duration,
       tokensUsed,
+      structuredOutput, // Phase 17
+      validationError,  // Phase 17
     };
   }
 
@@ -290,6 +332,23 @@ export class WorkerAgent {
             system: this.role.systemPrompt,
             messages,
             tools: tools as Anthropic.Tool[],
+
+            // Extended Thinking support (Phase 16)
+            // BEGINNER NOTE: Thinking works in the agentic loop too!
+            // Claude can reason about which tool to use and why.
+            ...(this.role.thinkingEnabled && {
+              thinking: {
+                type: 'enabled',
+                budget_tokens: this.role.thinkingBudgetTokens || 10000,
+              },
+            }),
+
+            // Structured Output support (Phase 17)
+            // BEGINNER NOTE: Works with tools! Claude can use tools AND
+            // return structured JSON at the end.
+            ...(this.role.outputSchema && {
+              response_format: { type: 'json_object' },
+            }),
           }),
         {
           ...DEFAULT_RETRY_CONFIG,
@@ -327,6 +386,27 @@ export class WorkerAgent {
         const output = this.extractText(response);
         const duration = Date.now() - startTime;
 
+        // Validate structured output if schema provided (Phase 17)
+        // BEGINNER NOTE: Same validation logic as runSimple(). We check if
+        // the output matches the expected schema, but don't throw on failure.
+        let structuredOutput: unknown | undefined;
+        let validationError: import('zod').ZodError | undefined;
+
+        if (this.role.outputSchema) {
+          const { tryParseStructured } = await import('../utils/json.js');
+          const result = tryParseStructured(output, this.role.outputSchema);
+
+          if (result.success) {
+            structuredOutput = result.data;
+            logger.info(`[${this.role.name}] Structured output validated successfully`);
+          } else {
+            validationError = result.validationErrors;
+            logger.warn(
+              `[${this.role.name}] Output validation failed: ${result.error}`
+            );
+          }
+        }
+
         logger.info(
           `[${this.role.name}] Completed in ${duration}ms (${totalTokensUsed} tokens, ${turnCount} turn(s))`
         );
@@ -337,6 +417,8 @@ export class WorkerAgent {
           success: true,
           duration,
           tokensUsed: totalTokensUsed,
+          structuredOutput, // Phase 17
+          validationError,  // Phase 17
         };
       }
 

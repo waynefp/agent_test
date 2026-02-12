@@ -53,6 +53,27 @@ export interface AgentConfig {
 
   /** Retry configuration for API calls (Phase 11) */
   retryConfig?: RetryOptions;
+
+  /**
+   * Enable extended thinking for complex reasoning (Phase 16)
+   * BEGINNER NOTE: When enabled, Claude will show its step-by-step reasoning
+   * before providing a final answer. Great for math, logic, and planning tasks.
+   */
+  thinkingEnabled?: boolean;
+
+  /**
+   * Token budget allocated for thinking (Phase 16)
+   * BEGINNER NOTE: This controls how many tokens Claude can use for reasoning.
+   * Default is 10,000 tokens. Higher = more detailed reasoning.
+   */
+  thinkingBudgetTokens?: number;
+
+  /**
+   * Output schema for structured responses (Phase 17)
+   * BEGINNER NOTE: When set, Claude returns JSON validated against this schema.
+   * Great for extracting structured data from conversations.
+   */
+  outputSchema?: import('zod').ZodSchema;
 }
 
 /**
@@ -114,6 +135,12 @@ export interface ChatOptions {
 
   /** Task description (if trackAsTask is true) */
   taskDescription?: string;
+
+  /**
+   * Output schema for this specific request (Phase 17)
+   * BEGINNER NOTE: Overrides agent-level outputSchema for this chat only
+   */
+  outputSchema?: import('zod').ZodSchema;
 }
 
 /**
@@ -280,5 +307,45 @@ export class AgentConfigurationError extends AgentError {
   constructor(message: string) {
     super(message);
     this.name = 'AgentConfigurationError';
+  }
+}
+
+// ============================================
+// Phase 17: Structured Outputs
+// ============================================
+
+/**
+ * Result from structured output request (Phase 17)
+ * BEGINNER NOTE: Discriminated union ensures type-safe error handling.
+ * Always check `success` before accessing `data`.
+ */
+export type StructuredAgentResponse<T> =
+  | {
+      success: true;
+      data: T; // Validated data matching schema
+      rawText: string; // Original Claude response
+      metadata?: AgentResponseMetadata;
+    }
+  | {
+      success: false;
+      error: string; // Human-readable error
+      rawText: string; // Original Claude response
+      validationErrors?: import('zod').ZodError; // Detailed validation errors
+      metadata?: AgentResponseMetadata;
+    };
+
+/**
+ * Error thrown when output validation fails (Phase 17)
+ * BEGINNER NOTE: Contains both the error message and the raw text
+ * so you can see what Claude actually returned.
+ */
+export class OutputValidationError extends AgentError {
+  constructor(
+    message: string,
+    public validationErrors: import('zod').ZodError,
+    public rawText: string
+  ) {
+    super(message);
+    this.name = 'OutputValidationError';
   }
 }

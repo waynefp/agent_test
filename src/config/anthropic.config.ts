@@ -8,7 +8,13 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { ANTHROPIC_API_KEY, ANTHROPIC_MODEL, MAX_TOKENS } from './environment.js';
+import {
+  ANTHROPIC_API_KEY,
+  ANTHROPIC_MODEL,
+  MAX_TOKENS,
+  THINKING_ENABLED,
+  THINKING_BUDGET_TOKENS,
+} from './environment.js';
 import type { AgentConfig } from '../types/agent.types.js';
 
 /**
@@ -56,6 +62,11 @@ export const DEFAULT_AGENT_CONFIG: AgentConfig = {
   enableTools: false, // Will enable in Phase 4
   enableTaskTracking: false, // Will enable in Phase 5
   systemPrompt: getDefaultSystemPrompt(),
+
+  // Extended Thinking (Phase 16)
+  // BEGINNER NOTE: Off by default to save costs and latency
+  thinkingEnabled: THINKING_ENABLED,
+  thinkingBudgetTokens: THINKING_BUDGET_TOKENS,
 };
 
 /**
@@ -115,6 +126,38 @@ export function createMessageParams(
 
   if (finalConfig.temperature !== undefined) {
     params.temperature = finalConfig.temperature;
+  }
+
+  // Add extended thinking if enabled (Phase 16)
+  // BEGINNER NOTE: This tells Claude to show its step-by-step reasoning
+  // before providing a final answer. The budget controls how many tokens
+  // Claude can use for thinking.
+  if (finalConfig.thinkingEnabled) {
+    params.thinking = {
+      type: 'enabled',
+      budget_tokens: finalConfig.thinkingBudgetTokens || 10000,
+    };
+  }
+
+  // Add structured output support (Phase 17)
+  // BEGINNER NOTE: This tells Claude to return JSON instead of plain text.
+  // We also enhance the system prompt to remind Claude about the JSON requirement.
+  if (finalConfig.outputSchema) {
+    // Type assertion needed - response_format not yet in SDK types
+    (params as any).response_format = { type: 'json_object' };
+
+    // Enhance system prompt with JSON instruction
+    const schemaHint =
+      '\n\nYou must respond with valid JSON matching the provided schema. Do not include any text outside the JSON object.';
+
+    if (params.system) {
+      params.system =
+        typeof params.system === 'string'
+          ? params.system + schemaHint
+          : params.system; // Handle array format if needed
+    } else {
+      params.system = schemaHint;
+    }
   }
 
   return params;

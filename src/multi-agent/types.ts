@@ -47,6 +47,26 @@ export interface AgentRole {
    * they work with data from other agents.
    */
   tools?: ITool[];
+
+  /**
+   * Enable extended thinking for this agent (Phase 16)
+   * BEGINNER NOTE: When enabled, Claude will show step-by-step reasoning.
+   * Useful for fact-checking, complex analysis, and verification tasks.
+   */
+  thinkingEnabled?: boolean;
+
+  /**
+   * Token budget for thinking (Phase 16)
+   * BEGINNER NOTE: Default is 10,000 tokens. Higher = more detailed reasoning.
+   */
+  thinkingBudgetTokens?: number;
+
+  /**
+   * Output schema for this agent (Phase 17)
+   * BEGINNER NOTE: Research agents can output structured JSON reports
+   * instead of plain text. Great for data extraction and validation.
+   */
+  outputSchema?: import('zod').ZodSchema;
 }
 
 /**
@@ -72,6 +92,12 @@ export interface AgentResult {
 
   /** Token usage for this agent's work */
   tokensUsed: number;
+
+  /** Validation error if structured output failed (Phase 17) */
+  validationError?: import('zod').ZodError;
+
+  /** Structured output data if validation succeeded (Phase 17) */
+  structuredOutput?: unknown;
 }
 
 /**

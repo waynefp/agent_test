@@ -59,6 +59,10 @@ export interface EnvironmentConfig {
   anthropicModel: string;
   maxTokens: number;
 
+  // Extended Thinking (Phase 16)
+  thinkingEnabled: boolean;
+  thinkingBudgetTokens: number;
+
   // Data storage paths
   conversationsDir: string;
   tasksDir: string;
@@ -85,6 +89,11 @@ export function getEnvironmentConfig(): EnvironmentConfig {
     // Optional with defaults
     anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20250929',
     maxTokens: parseInt(process.env.MAX_TOKENS || '8192', 10),
+
+    // Extended Thinking (Phase 16)
+    // BEGINNER NOTE: Off by default to save costs and latency
+    thinkingEnabled: process.env.THINKING_ENABLED?.toLowerCase() === 'true' || false,
+    thinkingBudgetTokens: parseInt(process.env.THINKING_BUDGET_TOKENS || '10000', 10),
 
     // Data directories (relative to project root)
     conversationsDir: process.env.CONVERSATIONS_DIR || join(_projectRoot, 'data', 'conversations'),
@@ -114,6 +123,8 @@ export const {
   anthropicApiKey: ANTHROPIC_API_KEY,
   anthropicModel: ANTHROPIC_MODEL,
   maxTokens: MAX_TOKENS,
+  thinkingEnabled: THINKING_ENABLED,
+  thinkingBudgetTokens: THINKING_BUDGET_TOKENS,
   conversationsDir: CONVERSATIONS_DIR,
   tasksDir: TASKS_DIR,
   logLevel: LOG_LEVEL,

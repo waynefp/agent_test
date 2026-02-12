@@ -1,6 +1,6 @@
 # Agent SDK Learning Project - Progress Summary
 
-**Last Updated:** Phase 11 Complete - January 25, 2025
+**Last Updated:** Phase 16 Complete - February 9, 2026
 
 ## 📋 Table of Contents
 - [Project Purpose](#project-purpose)
@@ -42,11 +42,13 @@ This project follows a structured 14-phase learning journey for building AI agen
 | 12 | Vision & Multi-modal | ✅ Complete | Image processing, multi-modal inputs |
 | 13 | Memory Files | ✅ Complete | CLAUDE.md types, configuration, settings |
 | 14 | Skills System | ✅ Complete | Skill files, dynamic prompt loading |
+| 15 | Multi-Agent Patterns | ✅ Complete | Worker agents, pipelines, orchestration |
+| 16 | Extended Thinking | ✅ Complete | Step-by-step reasoning, thinking budgets |
 
 ### Future Phases (Documented, Not Detailed)
-- Multi-agent patterns
 - Structured output / JSON mode
-- Advanced orchestration
+- Advanced tool patterns
+- Production deployment
 
 ---
 
@@ -1716,6 +1718,101 @@ A: Separation of concerns. Each file has one job, making code easier to understa
 
 ---
 
-**Last Updated:** Phase 11 (Production Readiness) Complete - January 25, 2025
-**Next Update:** After Phase 12 begins or completes
+## Phase 16: Extended Thinking ✅
+
+**Goal:** Add extended thinking support to enable step-by-step reasoning before final responses.
+
+### What We Built
+
+1. **Thinking Configuration**
+   - Added `thinkingEnabled` and `thinkingBudgetTokens` to `AgentConfig`
+   - Environment variable support (`THINKING_ENABLED`, `THINKING_BUDGET_TOKENS`)
+   - Default: disabled, 10K token budget
+
+2. **API Integration**
+   - Updated `createMessageParams()` to include thinking parameter
+   - Modified both `Agent` and `WorkerAgent` API calls
+   - Thinking works in both single-call and agentic loop modes
+
+3. **Multi-Agent Support**
+   - Added thinking fields to `AgentRole` type
+   - Individual agents can enable/disable thinking independently
+   - Great for fact-checking agents in pipelines
+
+4. **Output Handling**
+   - Extract and log thinking blocks at DEBUG level
+   - Thinking output separate from final response
+   - Shows Claude's step-by-step reasoning
+
+5. **CLI Commands**
+   - `/thinking` - Toggle thinking on/off
+   - `/thinking-budget <tokens>` - Set token budget (1K-100K)
+   - Updated help text with thinking commands
+
+### Files Modified
+- `src/types/agent.types.ts` - Added thinking config fields
+- `src/config/environment.ts` - Added environment variables
+- `src/config/anthropic.config.ts` - Updated defaults and API builder
+- `src/agent/Agent.ts` - Extract and log thinking blocks
+- `src/multi-agent/types.ts` - Added thinking to AgentRole
+- `src/multi-agent/WorkerAgent.ts` - Added thinking to both API calls
+- `src/cli/commands.ts` - Added thinking commands
+- `src/cli/display.ts` - Updated help text
+- `docs/COMMANDS.md` - Documented thinking commands
+- `learning/16-extended-thinking.md` - Comprehensive guide
+
+### Key Concepts
+
+**Extended Thinking:** Claude shows its step-by-step reasoning before the final answer. The thinking output appears in `<thinking>` blocks and is separate from the final response.
+
+**Thinking Budget:** Controls how many tokens Claude can use for reasoning. Higher budgets = more detailed reasoning but higher costs and latency.
+
+**When to Use:**
+- Math, logic, planning, fact-checking, debugging
+- Tasks requiring multi-step reasoning
+- When correctness matters more than speed
+
+**When NOT to Use:**
+- Simple questions or creative writing
+- Time-sensitive or cost-sensitive tasks
+- Tasks that don't benefit from visible reasoning
+
+### Example Usage
+
+```typescript
+// Enable thinking for the agent
+agent.config.thinkingEnabled = true;
+agent.config.thinkingBudgetTokens = 10000;
+
+// Or via CLI
+// > /thinking
+// > /thinking-budget 5000
+// > What's the 50th Fibonacci number?
+
+// For multi-agent patterns
+const factChecker: AgentRole = {
+  id: 'fact-checker',
+  name: 'Fact Checker',
+  systemPrompt: '...',
+  model: 'haiku',
+  thinkingEnabled: true,      // Only this agent uses thinking
+  thinkingBudgetTokens: 5000,
+};
+```
+
+### Cost Considerations
+
+- Thinking tokens count toward total usage (billable)
+- Default 10K budget ≈ $0.15 per request (at Sonnet output rates)
+- Use selectively for complex reasoning tasks
+- Consider Haiku + thinking for cost optimization
+
+### Learning Resources
+- `learning/16-extended-thinking.md` - Complete guide with examples
+- `docs/COMMANDS.md` - CLI command reference
+
+---
+
+**Last Updated:** Phase 16 (Extended Thinking) Complete - February 9, 2026
+**Next Phase:** Phase 17 - Structured Outputs (JSON Mode)
 **Learning Guide:** See `learning/` folder for standalone reference materials

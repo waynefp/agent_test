@@ -191,6 +191,40 @@ async function handleCommand(
     case '/image':
       return await handleImageCommand(args, agent, command);
 
+    // ============================================
+    // Extended Thinking Commands (Phase 16)
+    // ============================================
+
+    case '/thinking': {
+      // Toggle thinking on/off
+      agent.config.thinkingEnabled = !agent.config.thinkingEnabled;
+      const status = agent.config.thinkingEnabled ? 'enabled' : 'disabled';
+      displaySystemMessage(`Extended thinking ${status}`);
+      if (agent.config.thinkingEnabled) {
+        displaySystemMessage(`Token budget: ${agent.config.thinkingBudgetTokens} tokens`);
+        displaySystemMessage('Claude will show step-by-step reasoning before responses.');
+      }
+      return true;
+    }
+
+    case '/thinking-budget': {
+      // Set thinking budget
+      if (args.length === 0) {
+        displaySystemMessage(`Current thinking budget: ${agent.config.thinkingBudgetTokens} tokens`);
+        displaySystemMessage('Usage: /thinking-budget <tokens>');
+        displaySystemMessage('Example: /thinking-budget 5000');
+        return true;
+      }
+      const budget = parseInt(args[0], 10);
+      if (isNaN(budget) || budget < 1000 || budget > 100000) {
+        displayError('Budget must be between 1,000 and 100,000 tokens');
+        return true;
+      }
+      agent.config.thinkingBudgetTokens = budget;
+      displaySuccess(`Thinking budget set to ${budget} tokens`);
+      return true;
+    }
+
     default:
       displayError(`Unknown command: ${cmd}`);
       displaySystemMessage('Type /help to see available commands');

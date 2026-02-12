@@ -52,6 +52,38 @@ Quick reference for all available commands in the agent CLI.
 
 ---
 
+## Extended Thinking Commands
+
+| Command | Description |
+|---------|-------------|
+| `/thinking` | Toggle extended thinking on/off |
+| `/thinking-budget <tokens>` | Set thinking token budget (1,000-100,000) |
+
+### Examples
+```
+/thinking                    # Enable/disable thinking
+/thinking-budget 5000        # Set 5K token budget
+/thinking-budget             # Show current budget
+```
+
+**What is Extended Thinking?**
+- Shows Claude's step-by-step reasoning before the final answer
+- Great for: math, logic, planning, fact-checking, debugging
+- Uses additional tokens (costs more)
+- Adds latency (slower responses)
+- Disabled by default
+
+**When to use:**
+- Complex calculations or logic puzzles
+- Fact-checking and verification
+- Debugging code or analyzing trade-offs
+
+**When NOT to use:**
+- Simple questions or creative writing
+- Time-sensitive or cost-sensitive tasks
+
+---
+
 ## Task Commands
 
 | Command | Description |

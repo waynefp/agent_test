@@ -78,6 +78,8 @@ Commands available in chat:
 - `/clear` - Clear conversation history
 - `/history` - View past messages
 - `/stats` - See token usage statistics
+- `/thinking` - Toggle extended thinking (step-by-step reasoning)
+- `/thinking-budget <tokens>` - Set thinking token budget
 - `/exit` - Quit the chat
 
 ### Test Script

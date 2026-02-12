@@ -37,6 +37,8 @@ export function displayHelp(): void {
   console.log(chalk.cyan('  /stats') + '     - Show agent statistics');
   console.log(chalk.cyan('  /context') + '   - Show context window usage');
   console.log(chalk.cyan('  /image') + '     - Send an image to Claude');
+  console.log(chalk.cyan('  /thinking') + '  - Toggle extended thinking on/off');
+  console.log(chalk.cyan('  /thinking-budget') + ' - Set thinking token budget');
   console.log(chalk.cyan('  /save') + '      - Save current conversation');
   console.log(chalk.cyan('  /load') + '      - Load a saved conversation');
   console.log(chalk.cyan('  /sessions') + '  - List saved conversations');
@@ -46,6 +48,7 @@ export function displayHelp(): void {
   console.log();
   console.log(chalk.gray('Just type your message and press Enter to chat!'));
   console.log(chalk.gray('Use /image <path> to send images.'));
+  console.log(chalk.gray('Use /thinking to enable step-by-step reasoning.'));
   console.log();
 }
 
