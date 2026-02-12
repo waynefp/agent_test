@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "gdrive": {
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/mcp-gdrive"],
+      "env": {
+        "CLIENT_ID": "REPLACE_WITH_YOUR_CLIENT_ID",
+        "CLIENT_SECRET": "REPLACE_WITH_YOUR_CLIENT_SECRET",
+        "GDRIVE_CREDS_DIR": "C:\Users\suzbp\.config\mcp-gdrive"
+      }
+    }
+  }
+}

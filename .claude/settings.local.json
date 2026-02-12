@@ -30,7 +30,31 @@
       "mcp__claude_ai_n8n__get_workflow_details",
       "mcp__claude_ai_n8n__execute_workflow",
       "Bash(xcopy:*)",
-      "Bash(powershell -Command:*)"
+      "Bash(powershell -Command:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(start:*)",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(npx -y @modelcontextprotocol/server-gdrive)",
+      "Bash(echo:*)",
+      "Bash(set GOOGLE_DRIVE_OAUTH_CREDENTIALS=C:Userssuzbp.configmcp-gdrivegcp-oauth.keys.json:*)",
+      "Bash(npx @piotr-agier/google-drive-mcp auth)",
+      "Bash(export GOOGLE_DRIVE_OAUTH_CREDENTIALS=\"C:/Users/suzbp/.config/mcp-gdrive/gcp-oauth.keys.json\")",
+      "Bash(tasklist:*)",
+      "Bash(uvx:*)",
+      "Bash(uv:*)",
+      "Bash(export PATH=\"C:\\\\Users\\\\suzbp\\\\.local\\\\bin:$PATH\")",
+      "Bash(claude mcp add --transport stdio elevenlabs --scope user -e ELEVENLABS_API_KEY=sk_e098724b7e32f3c9b76c20e14625e1b3ae78d46fbb6a9070 -- uvx elevenlabs-mcp)",
+      "Bash(claude mcp list:*)",
+      "mcp__elevenlabs__text_to_speech",
+      "WebFetch(domain:developers.freelancer.com)",
+      "WebFetch(domain:rollout.com)",
+      "WebFetch(domain:publicapis.io)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(gh api:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(npm run briefing:*)",
+      "Bash(git reset:*)",
+      "Bash(npm run demo:structured:*)"
     ]
   }
 }

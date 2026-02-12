@@ -141,14 +141,13 @@ export function createMessageParams(
 
   // Add structured output support (Phase 17)
   // BEGINNER NOTE: This tells Claude to return JSON instead of plain text.
-  // We also enhance the system prompt to remind Claude about the JSON requirement.
+  // We use system prompt instructions since response_format is not yet supported.
   if (finalConfig.outputSchema) {
-    // Type assertion needed - response_format not yet in SDK types
-    (params as any).response_format = { type: 'json_object' };
-
     // Enhance system prompt with JSON instruction
     const schemaHint =
-      '\n\nYou must respond with valid JSON matching the provided schema. Do not include any text outside the JSON object.';
+      '\n\nIMPORTANT: You must respond with ONLY valid JSON. ' +
+      'Do not include any explanatory text before or after the JSON. ' +
+      'Your entire response must be a single valid JSON object that can be parsed.';
 
     if (params.system) {
       params.system =

@@ -113,6 +113,26 @@ export class WorkerAgent {
     return ANTHROPIC_MODEL;
   }
 
+  /**
+   * Get the system prompt for this agent (Phase 17)
+   *
+   * BEGINNER NOTE: If this agent has an output schema, we enhance the
+   * system prompt to instruct Claude to return JSON only.
+   */
+  private getSystemPrompt(): string {
+    let prompt = this.role.systemPrompt;
+
+    // Add JSON instruction if structured output is enabled
+    if (this.role.outputSchema) {
+      prompt +=
+        '\n\nIMPORTANT: You must respond with ONLY valid JSON. ' +
+        'Do not include any explanatory text before or after the JSON. ' +
+        'Your entire response must be a single valid JSON object that can be parsed.';
+    }
+
+    return prompt;
+  }
+
   /** Check if this agent has tools */
   hasTools(): boolean {
     return this.toolRegistry !== null && this.toolRegistry.getToolCount() > 0;
@@ -195,7 +215,7 @@ export class WorkerAgent {
           model: this.getModelName(),
           max_tokens: this.role.maxTokens || MAX_TOKENS,
           temperature: this.role.temperature ?? 1.0,
-          system: this.role.systemPrompt,
+          system: this.getSystemPrompt(),
           messages: [{ role: 'user', content: userMessage }],
 
           // Extended Thinking support (Phase 16)
@@ -209,11 +229,8 @@ export class WorkerAgent {
           }),
 
           // Structured Output support (Phase 17)
-          // BEGINNER NOTE: If this agent has an output schema, Claude will
-          // return JSON instead of plain text
-          ...(this.role.outputSchema && {
-            response_format: { type: 'json_object' },
-          }),
+          // BEGINNER NOTE: If this agent has an output schema, we enhance
+          // the system prompt to request JSON (done in createMessageParams)
         }),
       {
         ...DEFAULT_RETRY_CONFIG,
@@ -329,7 +346,7 @@ export class WorkerAgent {
             model: this.getModelName(),
             max_tokens: this.role.maxTokens || MAX_TOKENS,
             temperature: this.role.temperature ?? 1.0,
-            system: this.role.systemPrompt,
+            system: this.getSystemPrompt(),
             messages,
             tools: tools as Anthropic.Tool[],
 
@@ -345,10 +362,7 @@ export class WorkerAgent {
 
             // Structured Output support (Phase 17)
             // BEGINNER NOTE: Works with tools! Claude can use tools AND
-            // return structured JSON at the end.
-            ...(this.role.outputSchema && {
-              response_format: { type: 'json_object' },
-            }),
+            // return structured JSON at the end (via system prompt instruction)
           }),
         {
           ...DEFAULT_RETRY_CONFIG,
