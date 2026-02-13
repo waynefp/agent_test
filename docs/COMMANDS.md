@@ -84,6 +84,46 @@ Quick reference for all available commands in the agent CLI.
 
 ---
 
+## Guardrails & Security Commands
+
+| Command | Description |
+|---------|-------------|
+| `/guardrails` | Toggle security guardrails on/off |
+| `/rate-limit <n>` | Set request rate limit (requests per minute) |
+| `/token-quota <n>` | Set token quota per conversation |
+
+### Examples
+```
+/guardrails                 # Enable/disable all guardrails
+/rate-limit 10              # Limit to 10 requests per minute
+/rate-limit 0               # Disable rate limiting
+/token-quota 100000         # Set 100K token quota
+/token-quota 0              # Remove quota (unlimited)
+```
+
+**What are Guardrails?**
+- Security and safety checks that protect your agent from attacks and abuse
+- Enabled guardrails:
+  - **Prompt injection detection** - Blocks attempts to manipulate the agent
+  - **Harmful content filtering** - Blocks dangerous/illegal requests
+  - **URL sanitization** - Prevents SSRF attacks
+- Optional guardrails:
+  - **Rate limiting** - Prevents spam/abuse
+  - **Token quotas** - Controls API costs
+
+**When to use:**
+- Public-facing agents (enable all)
+- Production environments
+- Multi-user systems
+- Cost-sensitive applications
+
+**When NOT to use:**
+- Personal development/testing
+- Trusted internal tools
+- When false positives are problematic
+
+---
+
 ## Task Commands
 
 | Command | Description |

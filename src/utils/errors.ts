@@ -80,6 +80,22 @@ export class FileSystemError extends ApplicationError {
 }
 
 /**
+ * Error thrown when a guardrail is violated (Phase 18)
+ * BEGINNER NOTE: This error is thrown when a security or safety
+ * check fails, such as prompt injection detection or rate limiting.
+ */
+export class GuardrailsViolationError extends ApplicationError {
+  constructor(
+    public violation: string,
+    message: string,
+    cause?: Error
+  ) {
+    super(message, 'GUARDRAILS_VIOLATION', cause);
+    this.name = 'GuardrailsViolationError';
+  }
+}
+
+/**
  * Helper function to check if an error is of a specific type
  * BEGINNER NOTE: Use this in catch blocks to handle different errors differently
  *

@@ -225,6 +225,100 @@ async function handleCommand(
       return true;
     }
 
+    // ============================================
+    // Guardrails Commands (Phase 18)
+    // ============================================
+
+    case '/guardrails': {
+      // Toggle guardrails on/off
+      if (!agent.config.guardrails) {
+        // Enable with default settings
+        agent.config.guardrails = {
+          detectPromptInjection: true,
+          filterHarmfulContent: true,
+          enableRateLimiting: false,
+          sanitizeUrls: true,
+          enableAuditLog: false,
+        };
+        displaySuccess('Guardrails enabled (prompt injection, harmful content, URL sanitization)');
+        displaySystemMessage('Use /rate-limit <n> to enable rate limiting');
+        displaySystemMessage('Use /token-quota <n> to set token quota');
+      } else {
+        agent.config.guardrails = undefined;
+        displaySystemMessage('Guardrails disabled');
+      }
+      return true;
+    }
+
+    case '/rate-limit': {
+      // Set rate limit
+      if (args.length === 0) {
+        if (agent.config.guardrails?.enableRateLimiting) {
+          displaySystemMessage(`Current rate limit: ${agent.config.guardrails.requestsPerMinute} requests/minute`);
+        } else {
+          displaySystemMessage('Rate limiting is disabled');
+        }
+        displaySystemMessage('Usage: /rate-limit <requests-per-minute>');
+        displaySystemMessage('Example: /rate-limit 10');
+        displaySystemMessage('Use /rate-limit 0 to disable');
+        return true;
+      }
+
+      const limit = parseInt(args[0], 10);
+      if (isNaN(limit) || limit < 0) {
+        displayError('Limit must be a positive number (or 0 to disable)');
+        return true;
+      }
+
+      if (!agent.config.guardrails) {
+        agent.config.guardrails = {};
+      }
+
+      if (limit === 0) {
+        agent.config.guardrails.enableRateLimiting = false;
+        displaySystemMessage('Rate limiting disabled');
+      } else {
+        agent.config.guardrails.enableRateLimiting = true;
+        agent.config.guardrails.requestsPerMinute = limit;
+        displaySuccess(`Rate limit set to ${limit} requests per minute`);
+      }
+      return true;
+    }
+
+    case '/token-quota': {
+      // Set token quota per conversation
+      if (args.length === 0) {
+        if (agent.config.guardrails?.maxTokensPerConversation) {
+          displaySystemMessage(`Current token quota: ${agent.config.guardrails.maxTokensPerConversation.toLocaleString()} tokens`);
+        } else {
+          displaySystemMessage('Token quota is not set (unlimited)');
+        }
+        displaySystemMessage('Usage: /token-quota <max-tokens>');
+        displaySystemMessage('Example: /token-quota 100000');
+        displaySystemMessage('Use /token-quota 0 to remove quota');
+        return true;
+      }
+
+      const quota = parseInt(args[0], 10);
+      if (isNaN(quota) || quota < 0) {
+        displayError('Quota must be a positive number (or 0 for unlimited)');
+        return true;
+      }
+
+      if (!agent.config.guardrails) {
+        agent.config.guardrails = {};
+      }
+
+      if (quota === 0) {
+        agent.config.guardrails.maxTokensPerConversation = undefined;
+        displaySystemMessage('Token quota removed (unlimited)');
+      } else {
+        agent.config.guardrails.maxTokensPerConversation = quota;
+        displaySuccess(`Token quota set to ${quota.toLocaleString()} tokens`);
+      }
+      return true;
+    }
+
     default:
       displayError(`Unknown command: ${cmd}`);
       displaySystemMessage('Type /help to see available commands');

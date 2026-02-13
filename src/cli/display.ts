@@ -39,6 +39,9 @@ export function displayHelp(): void {
   console.log(chalk.cyan('  /image') + '     - Send an image to Claude');
   console.log(chalk.cyan('  /thinking') + '  - Toggle extended thinking on/off');
   console.log(chalk.cyan('  /thinking-budget') + ' - Set thinking token budget');
+  console.log(chalk.cyan('  /guardrails') + ' - Toggle security guardrails on/off');
+  console.log(chalk.cyan('  /rate-limit') + ' - Set request rate limit');
+  console.log(chalk.cyan('  /token-quota') + ' - Set token quota per conversation');
   console.log(chalk.cyan('  /save') + '      - Save current conversation');
   console.log(chalk.cyan('  /load') + '      - Load a saved conversation');
   console.log(chalk.cyan('  /sessions') + '  - List saved conversations');

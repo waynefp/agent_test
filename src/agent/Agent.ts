@@ -173,6 +173,28 @@ export class Agent {
     try {
       const startTime = Date.now();
 
+      // Phase 18: Run guardrails validation before processing message
+      if (this.config.guardrails) {
+        const { GuardrailsValidator } = await import('../guardrails/Validator.js');
+        const validator = new GuardrailsValidator(this.config.guardrails);
+
+        const validationResult = await validator.validate(userMessage, {
+          conversationId: this.state.currentConversationId || 'default',
+          messageCount: this.state.messageCount,
+          totalTokensUsed: this.state.totalTokensUsed,
+        });
+
+        if (!validationResult.allowed) {
+          // Guardrail violation - throw error with details
+          const { GuardrailsViolationError } = await import('../utils/errors.js');
+          logger.warn('Guardrail violation detected', {
+            reason: validationResult.reason,
+            message: validationResult.message,
+          });
+          throw new GuardrailsViolationError(validationResult.reason, validationResult.message);
+        }
+      }
+
       // Add user message to conversation history
       logger.info(`User: ${userMessage}`);
       this.conversationManager.addTextMessage('user', userMessage);

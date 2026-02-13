@@ -1,6 +1,6 @@
 # Agent SDK Learning Project - Progress Summary
 
-**Last Updated:** Phase 16 Complete - February 9, 2026
+**Last Updated:** Phase 18 Complete - February 12, 2026
 
 ## 📋 Table of Contents
 - [Project Purpose](#project-purpose)
@@ -44,9 +44,11 @@ This project follows a structured 14-phase learning journey for building AI agen
 | 14 | Skills System | ✅ Complete | Skill files, dynamic prompt loading |
 | 15 | Multi-Agent Patterns | ✅ Complete | Worker agents, pipelines, orchestration |
 | 16 | Extended Thinking | ✅ Complete | Step-by-step reasoning, thinking budgets |
+| 17 | Structured Outputs | ✅ Complete | JSON mode, Zod schemas, validated responses |
+| 18 | Guardrails & Validation | ✅ Complete | Security, prompt injection, rate limiting, safety |
 
 ### Future Phases (Documented, Not Detailed)
-- Structured output / JSON mode
+- Parallel tool execution
 - Advanced tool patterns
 - Production deployment
 
@@ -1813,6 +1815,6 @@ const factChecker: AgentRole = {
 
 ---
 
-**Last Updated:** Phase 16 (Extended Thinking) Complete - February 9, 2026
-**Next Phase:** Phase 17 - Structured Outputs (JSON Mode)
+**Last Updated:** Phase 18 (Guardrails & Validation) Complete - February 12, 2026
+**Next Phase:** Phase 19 - Parallel Tool Execution
 **Learning Guide:** See `learning/` folder for standalone reference materials

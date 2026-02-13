@@ -74,6 +74,14 @@ export interface AgentConfig {
    * Great for extracting structured data from conversations.
    */
   outputSchema?: import('zod').ZodSchema;
+
+  /**
+   * Guardrails configuration (Phase 18)
+   * BEGINNER NOTE: Safety and security settings to protect against
+   * prompt injection, harmful content, and resource abuse. Optional -
+   * only enable if you need these protections.
+   */
+  guardrails?: import('../types/guardrails.types.js').GuardrailsConfig;
 }
 
 /**
