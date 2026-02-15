@@ -158,8 +158,10 @@ export class ToolExecutor {
   }
 
   /**
-   * Execute multiple tools in parallel
-   * BEGINNER NOTE: Run several tools at the same time (faster!)
+   * Execute multiple tools in parallel (Phase 19)
+   * BEGINNER NOTE: Promise.allSettled waits for ALL promises to complete,
+   * whether they succeed or fail. This is better than Promise.all which
+   * stops on the first error. All tools run simultaneously for maximum speed.
    *
    * @param toolCalls - Array of {name, input} pairs
    * @param options - Optional execution options
@@ -169,12 +171,18 @@ export class ToolExecutor {
     toolCalls: Array<{ name: string; input: unknown }>,
     options?: ToolExecutionOptions
   ): Promise<ToolUse[]> {
+    logger.info(`Executing ${toolCalls.length} tools in parallel`);
+    const startTime = Date.now();
+
     // Create promises for all tool executions
     const promises = toolCalls.map(async (call) => {
       try {
         return await this.executeToolWithMetadata(call.name, call.input, options);
       } catch (error) {
-        // Catch errors and return them as failed ToolUse objects
+        // Catch errors within each promise so they don't reject the batch
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.warn(`Tool ${call.name} failed during parallel execution`, { error: errorMessage });
+
         return {
           id: randomUUID(),
           name: call.name,
@@ -182,14 +190,49 @@ export class ToolExecutor {
           timestamp: new Date(),
           result: {
             success: false,
-            error: error instanceof Error ? error.message : String(error),
+            error: errorMessage,
+            data: null,
           },
+          executionTime: 0,
         };
       }
     });
 
-    // Wait for all to complete
-    return Promise.all(promises);
+    // Wait for ALL to complete (successes and failures)
+    // BEGINNER NOTE: Promise.allSettled never rejects, it waits for everything
+    const settledResults = await Promise.allSettled(promises);
+
+    // Extract results from settled promises
+    const results: ToolUse[] = settledResults.map((settled) => {
+      if (settled.status === 'fulfilled') {
+        return settled.value;
+      } else {
+        // Promise rejection (shouldn't happen since we catch above, but safety)
+        logger.error('Unexpected promise rejection in parallel execution', settled.reason);
+        return {
+          id: randomUUID(),
+          name: 'unknown',
+          input: {},
+          timestamp: new Date(),
+          result: {
+            success: false,
+            error: settled.reason instanceof Error ? settled.reason.message : String(settled.reason),
+            data: null,
+          },
+          executionTime: 0,
+        };
+      }
+    });
+
+    const totalTime = Date.now() - startTime;
+    const successCount = results.filter((r) => r.result?.success).length;
+    const failureCount = results.length - successCount;
+
+    logger.success(
+      `Parallel execution complete: ${successCount} succeeded, ${failureCount} failed in ${totalTime}ms`
+    );
+
+    return results;
   }
 
   /**

@@ -42,6 +42,8 @@ export function displayHelp(): void {
   console.log(chalk.cyan('  /guardrails') + ' - Toggle security guardrails on/off');
   console.log(chalk.cyan('  /rate-limit') + ' - Set request rate limit');
   console.log(chalk.cyan('  /token-quota') + ' - Set token quota per conversation');
+  console.log(chalk.cyan('  /parallel-tools') + ' - Toggle parallel tool execution');
+  console.log(chalk.cyan('  /sync-gdrive') + ' - Sync documents to Google Drive');
   console.log(chalk.cyan('  /save') + '      - Save current conversation');
   console.log(chalk.cyan('  /load') + '      - Load a saved conversation');
   console.log(chalk.cyan('  /sessions') + '  - List saved conversations');

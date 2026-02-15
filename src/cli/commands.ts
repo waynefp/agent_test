@@ -319,6 +319,103 @@ async function handleCommand(
       return true;
     }
 
+    // ============================================
+    // Parallel Tool Execution (Phase 19)
+    // ============================================
+
+    case '/parallel-tools': {
+      // Toggle parallel tool execution
+      agent.config.enableParallelTools = !agent.config.enableParallelTools;
+      const status = agent.config.enableParallelTools ? 'enabled' : 'disabled';
+      displaySystemMessage(`Parallel tool execution ${status}`);
+      if (agent.config.enableParallelTools) {
+        displaySystemMessage('Multiple tools will execute simultaneously for faster responses.');
+        displaySystemMessage('⚠️  Only enable if tools are independent (no dependencies)');
+      } else {
+        displaySystemMessage('Tools will execute sequentially (one at a time).');
+      }
+      return true;
+    }
+
+    // ============================================
+    // Google Drive Sync
+    // ============================================
+
+    case '/sync-gdrive': {
+      // Sync documents to Google Drive
+      const { createGoogleDriveSync } = await import('../utils/google-drive-sync.js');
+      const syncUtil = createGoogleDriveSync(process.cwd());
+
+      const syncType = args[0] || 'help';
+
+      if (syncType === 'help' || !syncType) {
+        displaySystemMessage('Google Drive Sync - Upload documents to Google Drive');
+        displaySystemMessage('');
+        displaySystemMessage('Usage: /sync-gdrive <type>');
+        displaySystemMessage('');
+        displaySystemMessage('Types:');
+        displaySystemMessage('  learning  - Sync all learning guides');
+        displaySystemMessage('  skills    - Sync all skills');
+        displaySystemMessage('  briefings - Sync all briefings');
+        displaySystemMessage('  all       - Sync everything');
+        displaySystemMessage('');
+        displaySystemMessage('Example: /sync-gdrive all');
+        return true;
+      }
+
+      displaySystemMessage(`Starting Google Drive sync: ${syncType}`);
+      displaySeparator();
+
+      try {
+        let result;
+
+        switch (syncType) {
+          case 'learning':
+            result = await syncUtil.syncLearningGuides();
+            break;
+          case 'skills':
+            result = await syncUtil.syncSkills();
+            break;
+          case 'briefings':
+            result = await syncUtil.syncBriefings();
+            break;
+          case 'all':
+            result = await syncUtil.syncAll();
+            break;
+          default:
+            displayError(`Unknown sync type: ${syncType}`);
+            displaySystemMessage('Use /sync-gdrive help for options');
+            return true;
+        }
+
+        // Display results
+        displaySeparator();
+        if (result.success) {
+          displaySuccess('✓ Sync completed successfully!');
+        } else {
+          displayError('⚠️  Sync completed with errors');
+        }
+
+        displaySystemMessage(`Files uploaded: ${result.uploaded.length}/${result.totalFiles}`);
+        if (result.failed.length > 0) {
+          displaySystemMessage(`Files failed: ${result.failed.length}`);
+          result.failed.forEach((file) => displayError(`  - ${file}`));
+        }
+        displaySystemMessage(`Total size: ${(result.totalSize / 1024).toFixed(2)} KB`);
+
+        if (result.uploaded.length > 0) {
+          displaySystemMessage('');
+          displaySystemMessage('Uploaded files:');
+          result.uploaded.forEach((file) => displaySuccess(`  ✓ ${file}`));
+        }
+      } catch (error) {
+        displayError('Sync failed:');
+        displayError(error instanceof Error ? error.message : String(error));
+      }
+
+      return true;
+    }
+
     default:
       displayError(`Unknown command: ${cmd}`);
       displaySystemMessage('Type /help to see available commands');

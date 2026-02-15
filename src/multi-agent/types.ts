@@ -67,6 +67,15 @@ export interface AgentRole {
    * instead of plain text. Great for data extraction and validation.
    */
   outputSchema?: import('zod').ZodSchema;
+
+  /**
+   * Enable parallel tool execution for this agent (Phase 19)
+   * BEGINNER NOTE: When this agent uses multiple tools, execute them
+   * simultaneously instead of one-by-one. Faster but only safe if
+   * tools are independent.
+   * Default: false (sequential execution)
+   */
+  enableParallelTools?: boolean;
 }
 
 /**

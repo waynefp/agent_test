@@ -323,9 +323,17 @@ export class Agent {
           return this.extractTextFromResponse(response);
         }
 
-        // Execute all tools
-        for (const toolUse of toolUses) {
-          await this.executeAndAddToolResult(toolUse);
+        // Phase 19: Parallel or sequential execution based on config
+        if (this.config.enableParallelTools && toolUses.length > 1) {
+          // PARALLEL: Execute all tools simultaneously
+          logger.info(`Executing ${toolUses.length} tools in parallel`);
+          await this.executeToolsParallel(toolUses);
+        } else {
+          // SEQUENTIAL: Execute tools one-by-one (default)
+          logger.info(`Executing ${toolUses.length} tools sequentially`);
+          for (const toolUse of toolUses) {
+            await this.executeAndAddToolResult(toolUse);
+          }
         }
 
         // Continue the loop - Claude will process the tool results
@@ -391,6 +399,55 @@ export class Agent {
         true
       );
     }
+  }
+
+  /**
+   * Execute multiple tools in parallel and add results to conversation (Phase 19)
+   * BEGINNER NOTE: This runs all tools at once using Promise.allSettled,
+   * then adds all results to the conversation in one batch.
+   *
+   * @param toolUses - Array of tool use blocks from Claude
+   */
+  private async executeToolsParallel(toolUses: ToolUseContent[]): Promise<void> {
+    const startTime = Date.now();
+
+    // Prepare tool calls for ToolExecutor
+    const toolCalls = toolUses.map((toolUse) => ({
+      name: toolUse.name,
+      input: toolUse.input,
+    }));
+
+    // Execute all tools in parallel
+    const results = await this.toolExecutor.executeManyParallel(toolCalls);
+
+    // Add all results to conversation
+    // BEGINNER NOTE: We add results in the same order as tool_use blocks
+    // because Claude expects tool_result IDs to match tool_use IDs
+    for (let i = 0; i < toolUses.length; i++) {
+      const toolUse = toolUses[i];
+      const result = results[i];
+
+      const resultString = JSON.stringify(result.result);
+
+      this.conversationManager.addToolResult(
+        toolUse.id, // Must match tool_use ID
+        resultString,
+        !result.result?.success // is_error flag
+      );
+
+      // Log individual result
+      if (result.result?.success) {
+        logger.success(`Tool ${toolUse.name} succeeded (parallel)`);
+      } else {
+        logger.warn(`Tool ${toolUse.name} failed (parallel): ${result.result?.error || 'Unknown error'}`);
+      }
+    }
+
+    const totalTime = Date.now() - startTime;
+    logger.success(`All ${toolUses.length} tools completed in ${totalTime}ms (parallel)`);
+
+    // Update state
+    this.state.toolCallCount += toolUses.length;
   }
 
   /**

@@ -82,6 +82,16 @@ export interface AgentConfig {
    * only enable if you need these protections.
    */
   guardrails?: import('../types/guardrails.types.js').GuardrailsConfig;
+
+  /**
+   * Enable parallel tool execution (Phase 19)
+   * BEGINNER NOTE: When Claude wants to use multiple tools, execute them
+   * simultaneously instead of one-by-one. This is faster but may cause issues
+   * if tools have dependencies on each other.
+   *
+   * Default: false (sequential execution)
+   */
+  enableParallelTools?: boolean;
 }
 
 /**

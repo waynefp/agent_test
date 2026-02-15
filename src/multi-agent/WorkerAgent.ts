@@ -456,59 +456,21 @@ export class WorkerAgent {
           };
         }
 
-        // Execute each tool and collect results
-        // BEGINNER NOTE: We build an array of tool results that Claude
-        // expects in a specific format: { type: "tool_result", tool_use_id, content }
-        const toolResults: Anthropic.ToolResultBlockParam[] = [];
+        // Phase 19: Support parallel execution if enabled
+        let toolResults: Anthropic.ToolResultBlockParam[];
 
-        for (const toolUse of toolUses) {
+        if (this.role.enableParallelTools && toolUses.length > 1) {
+          // PARALLEL execution
           logger.info(
-            `[${this.role.name}] Using tool: ${toolUse.name}`
+            `[${this.role.name}] Executing ${toolUses.length} tools in parallel`
           );
-
-          try {
-            const result = await this.toolExecutor!.executeTool(
-              toolUse.name,
-              toolUse.input
-            );
-
-            const resultString = JSON.stringify(
-              result.data || result.error,
-              null,
-              2
-            );
-
-            toolResults.push({
-              type: 'tool_result',
-              tool_use_id: toolUse.id,
-              content: resultString,
-              is_error: !result.success,
-            });
-
-            if (result.success) {
-              logger.info(
-                `[${this.role.name}] Tool ${toolUse.name} succeeded`
-              );
-            } else {
-              logger.warn(
-                `[${this.role.name}] Tool ${toolUse.name} failed: ${result.error}`
-              );
-            }
-          } catch (error) {
-            const errorMsg =
-              error instanceof Error ? error.message : String(error);
-
-            logger.error(
-              `[${this.role.name}] Tool ${toolUse.name} error: ${errorMsg}`
-            );
-
-            toolResults.push({
-              type: 'tool_result',
-              tool_use_id: toolUse.id,
-              content: `Error executing tool: ${errorMsg}`,
-              is_error: true,
-            });
-          }
+          toolResults = await this.executeToolsParallel(toolUses);
+        } else {
+          // SEQUENTIAL execution (original)
+          logger.info(
+            `[${this.role.name}] Executing ${toolUses.length} tools sequentially`
+          );
+          toolResults = await this.executeToolsSequential(toolUses);
         }
 
         // Add tool results to conversation
@@ -607,6 +569,112 @@ export class WorkerAgent {
     }
 
     return toolUses;
+  }
+
+  /**
+   * Execute tools sequentially (original behavior)
+   * BEGINNER NOTE: Run tools one-by-one, waiting for each to complete
+   *
+   * @param toolUses - Array of tool use blocks from Claude
+   * @returns Array of tool result blocks to send back to Claude
+   */
+  private async executeToolsSequential(
+    toolUses: ToolUseBlock[]
+  ): Promise<Anthropic.ToolResultBlockParam[]> {
+    const toolResults: Anthropic.ToolResultBlockParam[] = [];
+
+    for (const toolUse of toolUses) {
+      logger.info(`[${this.role.name}] Using tool: ${toolUse.name}`);
+
+      try {
+        const result = await this.toolExecutor!.executeTool(
+          toolUse.name,
+          toolUse.input
+        );
+
+        const resultString = JSON.stringify(
+          result.data || result.error,
+          null,
+          2
+        );
+
+        toolResults.push({
+          type: 'tool_result',
+          tool_use_id: toolUse.id,
+          content: resultString,
+          is_error: !result.success,
+        });
+
+        if (result.success) {
+          logger.info(
+            `[${this.role.name}] Tool ${toolUse.name} succeeded`
+          );
+        } else {
+          logger.warn(
+            `[${this.role.name}] Tool ${toolUse.name} failed: ${result.error}`
+          );
+        }
+      } catch (error) {
+        const errorMsg =
+          error instanceof Error ? error.message : String(error);
+
+        logger.error(
+          `[${this.role.name}] Tool ${toolUse.name} error: ${errorMsg}`
+        );
+
+        toolResults.push({
+          type: 'tool_result',
+          tool_use_id: toolUse.id,
+          content: `Error executing tool: ${errorMsg}`,
+          is_error: true,
+        });
+      }
+    }
+
+    return toolResults;
+  }
+
+  /**
+   * Execute tools in parallel (Phase 19)
+   * BEGINNER NOTE: Run all tools simultaneously for maximum speed
+   *
+   * @param toolUses - Array of tool use blocks from Claude
+   * @returns Array of tool result blocks to send back to Claude
+   */
+  private async executeToolsParallel(
+    toolUses: ToolUseBlock[]
+  ): Promise<Anthropic.ToolResultBlockParam[]> {
+    const toolCalls = toolUses.map((tu) => ({
+      name: tu.name,
+      input: tu.input,
+    }));
+
+    // Execute all tools in parallel
+    const results = await this.toolExecutor!.executeManyParallel(toolCalls);
+
+    // Map results to Anthropic format
+    // BEGINNER NOTE: We match results to tool_use IDs in the same order
+    return toolUses.map((toolUse, i) => {
+      const result = results[i];
+
+      // Log result
+      if (result.result?.success) {
+        logger.info(
+          `[${this.role.name}] Tool ${toolUse.name} succeeded (parallel)`
+        );
+      } else {
+        logger.warn(
+          `[${this.role.name}] Tool ${toolUse.name} failed (parallel): ${result.result?.error || 'Unknown error'}`
+        );
+      }
+
+      return {
+        type: 'tool_result' as const,
+        tool_use_id: toolUse.id,
+        content: JSON.stringify(result.result),
+        is_error: !result.result?.success,
+      };
+    });
   }
 }
 
