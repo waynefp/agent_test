@@ -64,6 +64,24 @@ export default function Home() {
                   updated[updated.length - 1].content = assistantMessage
                   return updated
                 })
+              } else if (data.type === 'tool_use') {
+                // Show tool usage in the message
+                const toolIndicator = `\n\n🔧 Using ${data.toolName}...\n`
+                assistantMessage += toolIndicator
+                setMessages(prev => {
+                  const updated = [...prev]
+                  updated[updated.length - 1].content = assistantMessage
+                  return updated
+                })
+              } else if (data.type === 'tool_result') {
+                // Show tool completion
+                const resultIndicator = data.success ? '✓' : '✗'
+                assistantMessage += `${resultIndicator}\n\n`
+                setMessages(prev => {
+                  const updated = [...prev]
+                  updated[updated.length - 1].content = assistantMessage
+                  return updated
+                })
               } else if (data.type === 'done') {
                 // Stream complete
                 setIsLoading(false)
@@ -96,15 +114,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card px-6 py-4">
-        <div className="flex items-center gap-2">
-          <MessageCircle className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Agent SDK Chat</h1>
-        </div>
-      </header>
-
+    <div className="flex flex-col h-full bg-background">
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {messages.length === 0 ? (

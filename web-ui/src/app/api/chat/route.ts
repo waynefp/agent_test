@@ -6,6 +6,9 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+// BEGINNER NOTE: This is the basic chat endpoint
+// For full agent features with tools, we'll use a separate backend API
+
 export async function POST(req: NextRequest) {
   try {
     const { message, conversationHistory = [] } = await req.json();
