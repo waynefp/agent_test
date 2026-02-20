@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: agent-api
+    container_name: agent-test-v2
     restart: unless-stopped
     ports:
       - "3000:3000"
