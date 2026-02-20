@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    /* Override flags that block emit */
+    "noEmit": false,                           // Enable output to dist/
+    "allowImportingTsExtensions": false,       // Required when emitting (TS5096 error otherwise)
+
+    /* Node.js runtime configuration */
+    "moduleResolution": "node16",              // Use Node.js module resolution
+    "module": "Node16",                        // Use Node.js modules (.js extensions required)
+    "outDir": "./dist"                         // Output compiled JavaScript here
+  },
+
+  /* Only compile the server file */
+  "include": ["src/server.ts"]
+}
