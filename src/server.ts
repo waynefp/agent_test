@@ -15,10 +15,12 @@ import { createWebSearchTool } from './tools/definitions/WebSearchTool.js';
 import { createCalculatorTool } from './tools/definitions/CalculatorTool.js';
 
 const app = express();
+// BEGINNER NOTE: Default port 3000 for VPS. For local testing with web UI running,
+// use: PORT=8080 npm run server to avoid conflicts
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors()); // Allow requests from anywhere
+app.use(cors()); // Allow requests from anywhere (needed for n8n)
 app.use(express.json({ limit: '10mb' })); // Parse JSON bodies
 
 // Session storage - Map of session_id to Agent instances

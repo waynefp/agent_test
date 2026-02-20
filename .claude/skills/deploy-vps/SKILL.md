@@ -32,16 +32,16 @@ npm run build
 # 2. Verify dist/server.js was created
 ls -lh dist/server.js
 
-# 3. Test locally
-PORT=3001 node dist/server.js &
+# 3. Test locally (use PORT=8080 to avoid conflict with web UI on port 3000)
+PORT=8080 node dist/server.js &
 SERVER_PID=$!
 
 # 4. Test health endpoint
-curl http://localhost:3001/health
+curl http://localhost:8080/health
 # Expected: {"status":"ok","message":"Agent API Server is running"}
 
 # 5. Test chat endpoint
-curl -X POST http://localhost:3001/chat \
+curl -X POST http://localhost:8080/chat \
   -H "Content-Type: application/json" \
   -d '{"message": "What is 2+2?", "session_id": "test"}'
 # Expected: {"response":"...","session_id":"test"}
