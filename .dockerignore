@@ -1,7 +1,7 @@
 # Dependencies
 node_modules
 npm-debug.log
-package-lock.json
+# package-lock.json  ← MUST include this for npm ci!
 
 # Build output
 dist
