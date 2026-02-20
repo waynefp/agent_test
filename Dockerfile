@@ -6,6 +6,10 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Copy and display version for verification
+COPY VERSION ./
+RUN echo "=== BUILDING COMMIT ===" && cat VERSION && echo "====================="
+
 # Copy package files
 COPY package*.json ./
 
