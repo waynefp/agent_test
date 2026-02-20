@@ -9,8 +9,16 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
+# Debug: Check what files we have
+RUN echo "=== Files in /app ===" && ls -la && \
+    echo "=== Node version ===" && node --version && \
+    echo "=== NPM version ===" && npm --version && \
+    echo "=== Checking package files ===" && \
+    (test -f package.json && echo "✓ package.json exists" || echo "✗ package.json MISSING") && \
+    (test -f package-lock.json && echo "✓ package-lock.json exists" || echo "✗ package-lock.json MISSING")
+
 # Install dependencies (including devDependencies for building)
-RUN npm ci
+RUN npm ci --verbose
 
 # Copy source code and config
 COPY tsconfig.json tsconfig.build.json ./
