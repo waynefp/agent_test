@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  agent-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agent-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Required: Set your Anthropic API key
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # Optional: Perplexity API key for web search
+      - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY:-}
+      # Port configuration
+      - PORT=3000
+      # Node environment
+      - NODE_ENV=production
+    # Health check
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    # Resource limits (optional - adjust based on your VPS)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
