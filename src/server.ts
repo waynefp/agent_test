@@ -13,6 +13,7 @@ import cors from 'cors';
 import { Agent } from './agent/Agent.js';
 import { createWebSearchTool } from './tools/definitions/WebSearchTool.js';
 import { createCalculatorTool } from './tools/definitions/CalculatorTool.js';
+import { createFileSystemTool } from './tools/definitions/FileSystemTool.js';
 
 const app = express();
 // BEGINNER NOTE: Default port 3000 for VPS. For local testing with web UI running,
@@ -57,10 +58,13 @@ app.post('/chat', async (req: Request, res: Response) => {
       agent = new Agent(
         {
           enableTools: true, // Required - otherwise tools are never invoked
-          systemPrompt: `You are a helpful AI assistant with access to web search and calculator tools.
+          systemPrompt: `You are a helpful AI assistant with access to web search, calculator, and file system tools.
 
 When users ask questions that require current information, use your web_search tool.
 For calculations, use your calculator tool.
+For file operations (read, write, list files), use your file_system tool.
+
+IMPORTANT: File operations are restricted to the /app/workspace directory for security.
 
 Be conversational, helpful, and cite sources when you use tools.`,
           maxTokens: 4096,
@@ -70,6 +74,7 @@ Be conversational, helpful, and cite sources when you use tools.`,
           // Register tools - using individual imports (not barrel) to avoid CommonJS issues
           createWebSearchTool(),
           createCalculatorTool(),
+          createFileSystemTool('/app/workspace'), // Safe workspace directory on VPS
         ]
       );
       sessions.set(session_id, agent);

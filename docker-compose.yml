@@ -34,9 +34,17 @@ services:
         reservations:
           cpus: '0.25'
           memory: 256M
+    # Volumes for file persistence
+    volumes:
+      - agent-workspace:/app/workspace
     # Logging
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+
+# Define named volumes
+volumes:
+  agent-workspace:
+    driver: local

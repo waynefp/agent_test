@@ -45,6 +45,10 @@ RUN npm ci --omit=dev
 # Copy built JavaScript from builder stage
 COPY --from=builder /app/dist ./dist
 
+# Create workspace directory for FileSystemTool
+# BEGINNER NOTE: This is where the agent can read/write files safely
+RUN mkdir -p /app/workspace && chmod 755 /app/workspace
+
 # Expose port (default 3000, can be overridden via environment variable)
 EXPOSE 3000
 
