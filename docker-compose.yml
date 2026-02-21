@@ -2,9 +2,7 @@ version: '3.8'
 
 services:
   agent-api:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/waynefp/agent_test:latest
     container_name: agent-test-v2
     restart: unless-stopped
     ports:
