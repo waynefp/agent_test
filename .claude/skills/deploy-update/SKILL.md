@@ -13,6 +13,35 @@ Walks you through updating the deployed agent on the VPS using the CI/CD pipelin
 - Updating dependencies or configurations
 - Any code changes that need to go live
 
+---
+
+## ⚠️ FIRST TIME SETUP (One-Time Only)
+
+**If you just switched from build-on-VPS to CI/CD**, you need to replace the docker-compose.yml on the VPS **once**:
+
+### Tell Kodee:
+
+> "Please replace the docker-compose.yml for agent-test-v2 with the latest version from GitHub:
+>
+> https://raw.githubusercontent.com/waynefp/agent_test/main/docker-compose.yml
+>
+> Then pull the latest image and recreate the container."
+
+### After Kodee Updates:
+
+**IMPORTANT:** You'll need to re-add your environment variables (API keys):
+
+1. Kodee will ask for the `.env` file or environment variables
+2. Provide:
+   ```
+   ANTHROPIC_API_KEY=sk-ant-your-key-here
+   PERPLEXITY_API_KEY=pplx-your-key-here
+   ```
+
+**That's it!** After this one-time setup, future updates use the simple process below.
+
+---
+
 ## Quick Update Process (The Simple Version)
 
 ### Step 1: Push Your Changes
@@ -38,13 +67,20 @@ Watch GitHub Actions build your image:
 
 **Tell Kodee (Hostinger bot):**
 
-> Please update agent-test-v2 to pull the latest image from `ghcr.io/waynefp/agent_test:latest`
+> "Update agent-test-v2"
+
+That's it! Kodee will pull the latest image and restart the container.
+
+**Or via Docker Manager UI:**
+- Go to Docker Manager
+- Find agent-test-v2
+- Click "Update"
 
 **Or if you have SSH access:**
 
 ```bash
 ssh your-user@148.230.82.242
-cd /path/to/agent-api  # wherever docker-compose.yml is
+cd /path/to/agent-test-v2
 docker compose pull
 docker compose up -d
 docker compose logs -f agent-test-v2
