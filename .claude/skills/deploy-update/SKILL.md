@@ -67,9 +67,12 @@ Watch GitHub Actions build your image:
 
 **Tell Kodee (Hostinger bot):**
 
-> "Update agent-test-v2"
-
-That's it! Kodee will pull the latest image and restart the container.
+> "Please run these commands for agent-test-v2:
+> ```
+> cd /docker/agent-test-v2
+> docker compose pull
+> docker compose up -d
+> ```"
 
 **Or via Docker Manager UI:**
 - Go to Docker Manager
@@ -80,11 +83,13 @@ That's it! Kodee will pull the latest image and restart the container.
 
 ```bash
 ssh your-user@148.230.82.242
-cd /path/to/agent-test-v2
+cd /docker/agent-test-v2
 docker compose pull
 docker compose up -d
 docker compose logs -f agent-test-v2
 ```
+
+**Note:** If environment variables (API keys) disappear after updates, you may need to re-add them. This shouldn't happen if the `.env` file is properly configured. If it keeps happening, ask Kodee: "Why do environment variables need to be re-added each time? The .env file should persist across updates."
 
 ### Step 4: Verify
 
@@ -389,8 +394,31 @@ git push
 - `NODE_ENV` - Environment (default: production)
 
 **Where to set:**
-- VPS: In `.env` file alongside docker-compose.yml
+- VPS: In `.env` file at `/docker/agent-test-v2/.env`
 - Never commit `.env` to git!
+
+**If API keys disappear after updates:**
+
+The `.env` file should persist across updates. If you keep needing to re-add them:
+
+1. **Via Kodee:** Ask to verify the `.env` file location and persistence
+2. **Via SSH:** Create/verify `.env` file:
+   ```bash
+   cd /docker/agent-test-v2
+   nano .env
+   # Add:
+   ANTHROPIC_API_KEY=sk-ant-your-key-here
+   PERPLEXITY_API_KEY=pplx-your-key-here
+   # Save: Ctrl+X, Y, Enter
+
+   # Verify it's there
+   cat .env
+
+   # Restart to pick up changes
+   docker compose up -d
+   ```
+
+3. **Alternative:** Set via docker-compose.yml directly (less secure, but persists)
 
 ---
 
