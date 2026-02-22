@@ -34,9 +34,7 @@ export class N8nMcpClient {
         version: '1.0.0',
       },
       {
-        capabilities: {
-          tools: {},
-        },
+        capabilities: {},
       }
     );
   }
@@ -51,15 +49,11 @@ export class N8nMcpClient {
 
     try {
       // Create SSE transport with authentication
-      const transport = new SSEClientTransport(
-        new URL(this.config.serverUrl),
-        {
-          headers: {
-            Authorization: `Bearer ${this.config.apiToken}`,
-          },
-        }
-      );
+      const url = new URL(this.config.serverUrl);
+      const transport = new SSEClientTransport(url);
 
+      // Note: Authentication might need to be handled differently with MCP SDK
+      // The bearer token may need to be passed via query params or handled by supergateway
       await this.client.connect(transport);
       this.isConnected = true;
 

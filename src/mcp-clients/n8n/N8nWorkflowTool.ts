@@ -10,17 +10,17 @@
 
 import { z } from 'zod';
 import { BaseTool } from '../../tools/definitions/BaseTool.js';
-import type { ToolResult } from '../../types/tool.types.js';
+import type { ToolResult, ToolExecutionOptions } from '../../types/tool.types.js';
 import type { N8nMcpClient } from './N8nMcpClient.js';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 
 /**
- * Dynamically create a tool class for an n8n workflow
+ * Dynamically create a tool instance for an n8n workflow
  */
 export function createN8nWorkflowTool(
   mcpTool: Tool,
   n8nClient: N8nMcpClient
-): typeof BaseTool {
+): BaseTool {
   // Convert MCP schema to Zod schema
   // BEGINNER NOTE: n8n provides JSON schema, we convert to Zod for type safety
   const inputSchema = mcpTool.inputSchema
@@ -29,11 +29,11 @@ export function createN8nWorkflowTool(
 
   // Create dynamic tool class
   class N8nWorkflowTool extends BaseTool {
-    name = mcpTool.name;
-    description = mcpTool.description || `Execute n8n workflow: ${mcpTool.name}`;
-    inputSchema = inputSchema;
+    readonly name = mcpTool.name;
+    readonly description = mcpTool.description || `Execute n8n workflow: ${mcpTool.name}`;
+    readonly inputSchema = inputSchema;
 
-    async execute(input: z.infer<typeof inputSchema>): Promise<ToolResult> {
+    async execute(input: z.infer<typeof inputSchema>, _options?: ToolExecutionOptions): Promise<ToolResult> {
       try {
         // Call n8n workflow via MCP
         const result = await n8nClient.callTool(mcpTool.name, input);
@@ -59,7 +59,7 @@ export function createN8nWorkflowTool(
     }
   }
 
-  return N8nWorkflowTool;
+  return new N8nWorkflowTool();
 }
 
 /**
@@ -111,8 +111,8 @@ export function createN8nWorkflowTools(n8nClient: N8nMcpClient): BaseTool[] {
   const tools: BaseTool[] = [];
 
   for (const mcpTool of mcpTools) {
-    const ToolClass = createN8nWorkflowTool(mcpTool, n8nClient);
-    tools.push(new ToolClass());
+    const toolInstance = createN8nWorkflowTool(mcpTool, n8nClient);
+    tools.push(toolInstance);
   }
 
   return tools;
