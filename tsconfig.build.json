@@ -11,6 +11,15 @@
     "outDir": "./dist"                         // Output compiled JavaScript here
   },
 
-  /* Only compile the server file */
-  "include": ["src/server.ts"]
+  /* Compile server and all its dependencies */
+  "include": ["src/**/*"],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/test-*.ts",
+    "src/api/**/*",
+    "src/scripts/**/*",
+    "src/apps/**/*",
+    "src/examples/**/*",
+    "src/multi-agent/examples/**/*"
+  ]
 }
