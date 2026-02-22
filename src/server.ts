@@ -14,6 +14,9 @@ import { Agent } from './agent/Agent.js';
 import { createWebSearchTool } from './tools/definitions/WebSearchTool.js';
 import { createCalculatorTool } from './tools/definitions/CalculatorTool.js';
 import { createFileSystemTool } from './tools/definitions/FileSystemTool.js';
+import { createN8nMcpClient, createN8nWorkflowTools } from './mcp-clients/n8n/index.js';
+import type { N8nMcpClient } from './mcp-clients/n8n/index.js';
+import type { BaseTool } from './tools/definitions/BaseTool.js';
 
 const app = express();
 // BEGINNER NOTE: Default port 3000 for VPS. For local testing with web UI running,
@@ -27,6 +30,42 @@ app.use(express.json({ limit: '10mb' })); // Parse JSON bodies
 // Session storage - Map of session_id to Agent instances
 // BEGINNER NOTE: In production, use Redis or a database for persistent sessions
 const sessions = new Map<string, Agent>();
+
+// n8n MCP Client - Connects to n8n workflows
+// BEGINNER NOTE: This lets the agent call n8n workflows as tools!
+let n8nClient: N8nMcpClient | null = null;
+let n8nWorkflowTools: BaseTool[] = [];
+
+/**
+ * Initialize n8n MCP connection
+ * BEGINNER NOTE: This runs once when the server starts
+ */
+async function initializeN8n(): Promise<void> {
+  const N8N_API_TOKEN = process.env.N8N_API_TOKEN;
+  const N8N_SERVER_URL = process.env.N8N_SERVER_URL || 'https://n8n.srv1063345.hstgr.cloud/mcp-server/http';
+
+  if (!N8N_API_TOKEN) {
+    console.log('⚠️  N8N_API_TOKEN not set - n8n workflows will not be available');
+    console.log('   To enable n8n integration, set N8N_API_TOKEN in .env');
+    return;
+  }
+
+  try {
+    console.log('🔌 Connecting to n8n MCP server...');
+    n8nClient = await createN8nMcpClient({
+      serverUrl: N8N_SERVER_URL,
+      apiToken: N8N_API_TOKEN,
+    });
+
+    // Create tools from n8n workflows
+    n8nWorkflowTools = createN8nWorkflowTools(n8nClient);
+
+    console.log(`✅ n8n MCP connected! ${n8nWorkflowTools.length} workflow(s) available as tools`);
+  } catch (error) {
+    console.error('❌ Failed to connect to n8n MCP:', error);
+    console.log('   Agent will run without n8n workflows');
+  }
+}
 
 /**
  * Health check endpoint
@@ -53,32 +92,43 @@ app.post('/chat', async (req: Request, res: Response) => {
     // Get or create agent for this session
     let agent = sessions.get(session_id);
     if (!agent) {
+      // Build tools array (standard tools + n8n workflows)
+      const tools: BaseTool[] = [
+        createWebSearchTool(),
+        createCalculatorTool(),
+        createFileSystemTool('/app/workspace'),
+        ...n8nWorkflowTools, // Add n8n workflows as tools!
+      ];
+
+      // Build system prompt based on available tools
+      let systemPrompt = `You are a helpful AI assistant with access to various tools:
+
+**Core Tools:**
+- Web Search: Use for current information, recent events, or facts
+- Calculator: Use for mathematical operations
+- File System: Read, write, and list files (restricted to /app/workspace)`;
+
+      if (n8nWorkflowTools.length > 0) {
+        systemPrompt += `\n\n**n8n Workflow Tools:**`;
+        n8nWorkflowTools.forEach((tool) => {
+          systemPrompt += `\n- ${tool.name}: ${tool.description}`;
+        });
+      }
+
+      systemPrompt += `\n\nBe conversational, helpful, and cite sources when you use tools.`;
+
       // CRITICAL: Pass { enableTools: true } - default is false!
-      // BEGINNER NOTE: This tells the agent to actually use the tools we register
       agent = new Agent(
         {
-          enableTools: true, // Required - otherwise tools are never invoked
-          systemPrompt: `You are a helpful AI assistant with access to web search, calculator, and file system tools.
-
-When users ask questions that require current information, use your web_search tool.
-For calculations, use your calculator tool.
-For file operations (read, write, list files), use your file_system tool.
-
-IMPORTANT: File operations are restricted to the /app/workspace directory for security.
-
-Be conversational, helpful, and cite sources when you use tools.`,
+          enableTools: true,
+          systemPrompt,
           maxTokens: 4096,
           temperature: 0.7,
         },
-        [
-          // Register tools - using individual imports (not barrel) to avoid CommonJS issues
-          createWebSearchTool(),
-          createCalculatorTool(),
-          createFileSystemTool('/app/workspace'), // Safe workspace directory on VPS
-        ]
+        tools
       );
       sessions.set(session_id, agent);
-      console.log(`✨ Created new agent session: ${session_id}`);
+      console.log(`✨ Created new agent session: ${session_id} (${tools.length} tools)`);
     }
 
     // Chat with the agent
@@ -103,11 +153,17 @@ Be conversational, helpful, and cite sources when you use tools.`,
   }
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🤖 Agent API Server running on port ${PORT}`);
-  console.log(`   Health check: http://localhost:${PORT}/health`);
-  console.log(`   Chat endpoint: http://localhost:${PORT}/chat`);
-  console.log(`\n📝 Example n8n request body:`);
-  console.log(`   { "message": "Hello!", "session_id": "n8n-workflow-1" }`);
-});
+// Initialize n8n and start server
+(async () => {
+  // Connect to n8n MCP server
+  await initializeN8n();
+
+  // Start Express server
+  app.listen(PORT, () => {
+    console.log(`\n🤖 Agent API Server running on port ${PORT}`);
+    console.log(`   Health check: http://localhost:${PORT}/health`);
+    console.log(`   Chat endpoint: http://localhost:${PORT}/chat`);
+    console.log(`\n📝 Example n8n request body:`);
+    console.log(`   { "message": "Hello!", "session_id": "n8n-workflow-1" }`);
+  });
+})();
