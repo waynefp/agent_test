@@ -16,6 +16,8 @@ import { createCalculatorTool } from './tools/definitions/CalculatorTool.js';
 import { createFileSystemTool } from './tools/definitions/FileSystemTool.js';
 import { createDateTimeTool } from './tools/definitions/DateTimeTool.js';
 import { createHttpFetchTool } from './tools/definitions/HttpFetchTool.js';
+import { createDatabaseTool } from './tools/definitions/DatabaseTool.js';
+import { createCodeExecutionTool } from './tools/definitions/CodeExecutionTool.js';
 import { createN8nMcpClient, createN8nWorkflowTools } from './mcp-clients/n8n/index.js';
 import type { N8nMcpClient } from './mcp-clients/n8n/index.js';
 import type { BaseTool } from './tools/definitions/BaseTool.js';
@@ -101,6 +103,8 @@ app.post('/chat', async (req: Request, res: Response) => {
         createFileSystemTool('/app/workspace'),
         createDateTimeTool(),
         createHttpFetchTool(),
+        createDatabaseTool('/app/workspace'),
+        createCodeExecutionTool('/app/workspace'),
         ...n8nWorkflowTools, // Add n8n workflows as tools!
       ];
 
@@ -112,7 +116,9 @@ app.post('/chat', async (req: Request, res: Response) => {
 - Calculator: Use for mathematical operations
 - File System: Read, write, and list files (restricted to /app/workspace)
 - Date/Time: Get current time, format dates, calculate date differences, and perform date arithmetic
-- HTTP Fetch: Make HTTP requests to external APIs and web services`;
+- HTTP Fetch: Make HTTP requests to external APIs and web services
+- Database: SQLite database for persistent storage and structured data (data persists across restarts)
+- Code Execution: Run JavaScript and Python code in a sandboxed environment with timeouts`;
 
       if (n8nWorkflowTools.length > 0) {
         systemPrompt += `\n\n**n8n Workflow Tools:**`;

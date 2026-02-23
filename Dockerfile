@@ -36,6 +36,10 @@ FROM node:20-alpine AS runtime
 
 WORKDIR /app
 
+# Install Python3 for code execution tool
+# BEGINNER NOTE: Required for CodeExecutionTool to run Python code
+RUN apk add --no-cache python3 py3-pip
+
 # Copy package files
 COPY package*.json ./
 
@@ -45,8 +49,8 @@ RUN npm ci --omit=dev
 # Copy built JavaScript from builder stage
 COPY --from=builder /app/dist ./dist
 
-# Create workspace directory for FileSystemTool
-# BEGINNER NOTE: This is where the agent can read/write files safely
+# Create workspace directory for FileSystemTool and code execution
+# BEGINNER NOTE: This is where the agent can read/write files and run code safely
 RUN mkdir -p /app/workspace && chmod 755 /app/workspace
 
 # Expose port (default 3000, can be overridden via environment variable)
