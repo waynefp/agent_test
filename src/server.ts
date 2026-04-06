@@ -165,6 +165,23 @@ app.post('/chat', async (req: Request, res: Response) => {
   }
 });
 
+app.post('/reset', (req, res) => {
+  const { session_id = 'default' } = req.body;
+
+  if (session_id === 'all') {
+    const count = sessions.size;
+    sessions.clear();
+    return res.json({ status: 'ok', message: `Cleared ${count} sessions` });
+  }
+
+  if (sessions.has(session_id)) {
+    sessions.delete(session_id);
+    return res.json({ status: 'ok', session_id, message: 'Session cleared' });
+  }
+
+  return res.json({ status: 'ok', session_id, message: 'No session found (nothing to clear)' });
+});
+
 // Initialize n8n and start server
 (async () => {
   // Connect to n8n MCP server
