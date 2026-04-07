@@ -130,6 +130,20 @@ function buildToolAwareSystemPrompt(personaId: string): string {
 
   systemPrompt += `\n\nBe conversational, helpful, and cite sources when you use tools.`;
 
+  // Add persona awareness so the agent can tell users about available personas
+  const personaList = Object.values(PERSONAS)
+    .map((p) => `- **${p.name}** (${p.id}): ${p.description}`)
+    .join('\n');
+
+  systemPrompt += `\n\n**Personas:**
+You are currently using the **${persona?.name || 'Helpful Assistant'}** persona (id: ${personaId}).
+
+The following personas are available:
+${personaList}
+
+When users ask about personas, list all available options above.
+Note: To switch personas, users need to start a new session with the desired persona. You cannot switch personas mid-conversation.`;
+
   return systemPrompt;
 }
 
