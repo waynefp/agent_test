@@ -36,6 +36,10 @@ app.use(express.json({ limit: '10mb' })); // Parse JSON bodies
 // BEGINNER NOTE: In production, use Redis or a database for persistent sessions
 const sessions = new Map<string, Agent>();
 
+// Track which persona each session is using
+// BEGINNER NOTE: We need this so we can tell the user their current persona
+const sessionPersonas = new Map<string, string>();
+
 // n8n MCP Client - Connects to n8n workflows
 // BEGINNER NOTE: This lets the agent call n8n workflows as tools!
 let n8nClient: N8nMcpClient | null = null;
@@ -143,11 +147,49 @@ app.post('/chat', async (req: Request, res: Response) => {
       return;
     }
 
-    // Validate persona if provided
-    const selectedPersona = getPersona(persona);
+    // --- In-chat persona commands ---
+    // BEGINNER NOTE: These let users type /personas, /creative, /coder, etc. in Telegram
+    const trimmedMessage = message.trim().toLowerCase();
+
+    // /personas - List available personas
+    if (trimmedMessage === '/personas') {
+      const currentPersona = sessionPersonas.get(session_id) || 'default';
+      const list = Object.values(PERSONAS)
+        .map((p) => `${p.id === currentPersona ? '👉 ' : ''}/${p.id} - ${p.name}: ${p.description}`)
+        .join('\n');
+      res.json({
+        response: `**Available Personas:**\n\n${list}\n\nType a command like /creative or /coder to switch.`,
+        session_id,
+      });
+      return;
+    }
+
+    // /persona-id - Switch to a specific persona (e.g., /creative, /coder, /teacher)
+    if (trimmedMessage.startsWith('/') && !trimmedMessage.includes(' ')) {
+      const requestedId = trimmedMessage.slice(1); // Remove the leading /
+      const requestedPersona = getPersona(requestedId);
+      if (requestedPersona) {
+        // Clear existing session so a new agent is created with the new persona
+        sessions.delete(session_id);
+        sessionPersonas.set(session_id, requestedId);
+        console.log(`🔄 [${session_id}] Switched persona to: ${requestedId}`);
+        res.json({
+          response: `Switched to **${requestedPersona.name}** persona. ${requestedPersona.description}.\n\nHow can I help you?`,
+          session_id,
+        });
+        return;
+      }
+      // Not a persona command — fall through to normal chat
+    }
+
+    // Determine which persona to use: session override > request body > default
+    const activePersonaId = sessionPersonas.get(session_id) || persona;
+
+    // Validate persona
+    const selectedPersona = getPersona(activePersonaId);
     if (!selectedPersona) {
       const validIds = Object.keys(PERSONAS).join(', ');
-      res.status(400).json({ error: `Unknown persona: "${persona}". Valid personas: ${validIds}` });
+      res.status(400).json({ error: `Unknown persona: "${activePersonaId}". Valid personas: ${validIds}` });
       return;
     }
 
@@ -167,7 +209,7 @@ app.post('/chat', async (req: Request, res: Response) => {
       ];
 
       // Build system prompt from persona + tool descriptions
-      const systemPrompt = buildToolAwareSystemPrompt(persona);
+      const systemPrompt = buildToolAwareSystemPrompt(activePersonaId);
 
       // CRITICAL: Pass { enableTools: true } - default is false!
       agent = new Agent(
@@ -180,7 +222,8 @@ app.post('/chat', async (req: Request, res: Response) => {
         tools
       );
       sessions.set(session_id, agent);
-      console.log(`✨ Created new agent session: ${session_id} [persona: ${persona}] (${tools.length} tools)`);
+      sessionPersonas.set(session_id, activePersonaId);
+      console.log(`✨ Created new agent session: ${session_id} [persona: ${activePersonaId}] (${tools.length} tools)`);
     }
 
     // Chat with the agent
@@ -211,11 +254,13 @@ app.post('/reset', (req, res) => {
   if (session_id === 'all') {
     const count = sessions.size;
     sessions.clear();
+    sessionPersonas.clear();
     return res.json({ status: 'ok', message: `Cleared ${count} sessions` });
   }
 
   if (sessions.has(session_id)) {
     sessions.delete(session_id);
+    sessionPersonas.delete(session_id);
     return res.json({ status: 'ok', session_id, message: 'Session cleared' });
   }
 
