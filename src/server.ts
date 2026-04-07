@@ -21,6 +21,7 @@ import { createCodeExecutionTool } from './tools/definitions/CodeExecutionTool.j
 import { createN8nMcpClient, createN8nWorkflowTools } from './mcp-clients/n8n/index.js';
 import type { N8nMcpClient } from './mcp-clients/n8n/index.js';
 import type { BaseTool } from './tools/definitions/BaseTool.js';
+import { PERSONAS, getPersona, buildSystemPrompt } from './config/personas.js';
 
 const app = express();
 // BEGINNER NOTE: Default port 3000 for VPS. For local testing with web UI running,
@@ -80,16 +81,73 @@ app.get('/health', (_req: Request, res: Response) => {
 });
 
 /**
+ * Personas endpoint - List all available personas
+ * BEGINNER NOTE: Returns the list of personas so users/n8n can pick one
+ */
+app.get('/personas', (_req: Request, res: Response) => {
+  const personaList = Object.values(PERSONAS).map((p) => ({
+    id: p.id,
+    name: p.name,
+    description: p.description,
+  }));
+  res.json({ personas: personaList });
+});
+
+/**
+ * Build a system prompt that combines a persona with tool descriptions
+ * BEGINNER NOTE: This merges the persona's "character sheet" with info about available tools
+ */
+function buildToolAwareSystemPrompt(personaId: string): string {
+  const persona = getPersona(personaId);
+
+  // Start with the persona's system prompt (or fall back to default)
+  let systemPrompt = persona
+    ? buildSystemPrompt(persona.components)
+    : buildSystemPrompt(PERSONAS.default.components);
+
+  // Append tool descriptions so the agent knows what it can do
+  systemPrompt += `\n\n**Available Tools:**
+
+**Core Tools:**
+- Web Search: Use for current information, recent events, or facts
+- Calculator: Use for mathematical operations
+- File System: Read, write, and list files (restricted to /app/workspace)
+- Date/Time: Get current time, format dates, calculate date differences, and perform date arithmetic
+- HTTP Fetch: Make HTTP requests to external APIs and web services
+- Database: SQLite database for persistent storage and structured data (data persists across restarts)
+- Code Execution: Run JavaScript and Python code in a sandboxed environment with timeouts`;
+
+  if (n8nWorkflowTools.length > 0) {
+    systemPrompt += `\n\n**n8n Workflow Tools:**`;
+    n8nWorkflowTools.forEach((tool) => {
+      systemPrompt += `\n- ${tool.name}: ${tool.description}`;
+    });
+  }
+
+  systemPrompt += `\n\nBe conversational, helpful, and cite sources when you use tools.`;
+
+  return systemPrompt;
+}
+
+/**
  * Chat endpoint - Main API for n8n integration
- * BEGINNER NOTE: Accepts a message and session_id, returns agent's response
+ * BEGINNER NOTE: Accepts a message, session_id, and optional persona, returns agent's response
  */
 app.post('/chat', async (req: Request, res: Response) => {
   try {
-    const { message, session_id = 'default' }: { message?: string; session_id?: string } = req.body;
+    const { message, session_id = 'default', persona = 'default' }: { message?: string; session_id?: string; persona?: string } = req.body;
 
     // Validate required fields
     if (!message) {
       res.status(400).json({ error: 'Missing required field: message' });
+      return;
+    }
+
+    // Validate persona if provided
+    const selectedPersona = getPersona(persona);
+    if (!selectedPersona) {
+      const validIds = Object.keys(PERSONAS).join(', ');
+      res.status(400).json({ error: `Unknown persona: "${persona}". Valid personas: ${validIds}` });
       return;
     }
 
@@ -108,26 +166,8 @@ app.post('/chat', async (req: Request, res: Response) => {
         ...n8nWorkflowTools, // Add n8n workflows as tools!
       ];
 
-      // Build system prompt based on available tools
-      let systemPrompt = `You are a helpful AI assistant with access to various tools:
-
-**Core Tools:**
-- Web Search: Use for current information, recent events, or facts
-- Calculator: Use for mathematical operations
-- File System: Read, write, and list files (restricted to /app/workspace)
-- Date/Time: Get current time, format dates, calculate date differences, and perform date arithmetic
-- HTTP Fetch: Make HTTP requests to external APIs and web services
-- Database: SQLite database for persistent storage and structured data (data persists across restarts)
-- Code Execution: Run JavaScript and Python code in a sandboxed environment with timeouts`;
-
-      if (n8nWorkflowTools.length > 0) {
-        systemPrompt += `\n\n**n8n Workflow Tools:**`;
-        n8nWorkflowTools.forEach((tool) => {
-          systemPrompt += `\n- ${tool.name}: ${tool.description}`;
-        });
-      }
-
-      systemPrompt += `\n\nBe conversational, helpful, and cite sources when you use tools.`;
+      // Build system prompt from persona + tool descriptions
+      const systemPrompt = buildToolAwareSystemPrompt(persona);
 
       // CRITICAL: Pass { enableTools: true } - default is false!
       agent = new Agent(
@@ -135,12 +175,12 @@ app.post('/chat', async (req: Request, res: Response) => {
           enableTools: true,
           systemPrompt,
           maxTokens: 4096,
-          temperature: 0.7,
+          temperature: selectedPersona.recommendedTemperature ?? 0.7,
         },
         tools
       );
       sessions.set(session_id, agent);
-      console.log(`✨ Created new agent session: ${session_id} (${tools.length} tools)`);
+      console.log(`✨ Created new agent session: ${session_id} [persona: ${persona}] (${tools.length} tools)`);
     }
 
     // Chat with the agent
