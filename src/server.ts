@@ -148,11 +148,12 @@ app.post('/chat', async (req: Request, res: Response) => {
     }
 
     // --- In-chat persona commands ---
-    // BEGINNER NOTE: These let users type /personas, /creative, /coder, etc. in Telegram
-    const trimmedMessage = message.trim().toLowerCase();
+    // BEGINNER NOTE: These let users type /personas, /creative, /coder, etc. in Telegram.
+    // Telegram appends @BotName to commands (e.g., "/personas@MyBot"), so we strip that.
+    const trimmedMessage = message.trim().toLowerCase().replace(/@\S+/, '');
 
     // /personas - List available personas
-    if (trimmedMessage === '/personas') {
+    if (trimmedMessage === '/personas' || trimmedMessage === 'personas') {
       const currentPersona = sessionPersonas.get(session_id) || 'default';
       const list = Object.values(PERSONAS)
         .map((p) => `${p.id === currentPersona ? '👉 ' : ''}/${p.id} - ${p.name}: ${p.description}`)
@@ -165,14 +166,15 @@ app.post('/chat', async (req: Request, res: Response) => {
     }
 
     // /persona-id - Switch to a specific persona (e.g., /creative, /coder, /teacher)
-    if (trimmedMessage.startsWith('/') && !trimmedMessage.includes(' ')) {
-      const requestedId = trimmedMessage.slice(1); // Remove the leading /
-      const requestedPersona = getPersona(requestedId);
-      if (requestedPersona) {
-        // Clear existing session so a new agent is created with the new persona
+    // BEGINNER NOTE: Matches both "/creative" and just "creative" for flexibility
+    const commandCandidate = trimmedMessage.startsWith('/') ? trimmedMessage.slice(1) : trimmedMessage;
+    if (!commandCandidate.includes(' ')) {
+      const requestedPersona = getPersona(commandCandidate);
+      if (requestedPersona && trimmedMessage.startsWith('/')) {
+        // Only switch on /command form (not bare words that happen to match a persona id)
         sessions.delete(session_id);
-        sessionPersonas.set(session_id, requestedId);
-        console.log(`🔄 [${session_id}] Switched persona to: ${requestedId}`);
+        sessionPersonas.set(session_id, commandCandidate);
+        console.log(`🔄 [${session_id}] Switched persona to: ${commandCandidate}`);
         res.json({
           response: `Switched to **${requestedPersona.name}** persona. ${requestedPersona.description}.\n\nHow can I help you?`,
           session_id,
