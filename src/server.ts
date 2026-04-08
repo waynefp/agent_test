@@ -85,6 +85,15 @@ app.get('/health', (_req: Request, res: Response) => {
 });
 
 /**
+ * Debug endpoint - Shows the last raw message received by /chat
+ * BEGINNER NOTE: Useful for debugging what n8n actually sends to the server
+ */
+let lastRawRequest: Record<string, unknown> = {};
+app.get('/debug/last-request', (_req: Request, res: Response) => {
+  res.json(lastRawRequest);
+});
+
+/**
  * Personas endpoint - List all available personas
  * BEGINNER NOTE: Returns the list of personas so users/n8n can pick one
  */
@@ -154,6 +163,9 @@ Note: To switch personas, users need to start a new session with the desired per
 app.post('/chat', async (req: Request, res: Response) => {
   try {
     const { message, session_id = 'default', persona = 'default' }: { message?: string; session_id?: string; persona?: string } = req.body;
+
+    // Capture raw request for debugging
+    lastRawRequest = { message, session_id, persona, timestamp: new Date().toISOString() };
 
     // Validate required fields
     if (!message) {
