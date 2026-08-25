@@ -36,9 +36,10 @@ FROM node:20-alpine AS runtime
 
 WORKDIR /app
 
-# Install Python3 for code execution tool
-# BEGINNER NOTE: Required for CodeExecutionTool to run Python code
-RUN apk add --no-cache python3 py3-pip
+# ffmpeg powers POST /render (captions, lead-in, loudness normalisation).
+# ttf-dejavu matters as much as ffmpeg: libass has no font of its own, and
+# without one burned-in subtitles render as empty boxes with no error.
+RUN apk add --no-cache ffmpeg ttf-dejavu
 
 # Copy package files
 COPY package*.json ./

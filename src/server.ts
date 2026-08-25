@@ -17,11 +17,12 @@ import { createFileSystemTool } from './tools/definitions/FileSystemTool.js';
 import { createDateTimeTool } from './tools/definitions/DateTimeTool.js';
 import { createHttpFetchTool } from './tools/definitions/HttpFetchTool.js';
 import { createDatabaseTool } from './tools/definitions/DatabaseTool.js';
-import { createCodeExecutionTool } from './tools/definitions/CodeExecutionTool.js';
 import { createN8nMcpClient, createN8nWorkflowTools } from './mcp-clients/n8n/index.js';
 import type { N8nMcpClient } from './mcp-clients/n8n/index.js';
 import type { BaseTool } from './tools/definitions/BaseTool.js';
 import { PERSONAS, getPersona, buildSystemPrompt } from './config/personas.js';
+import { requireApiKey, warnIfUnauthenticated } from './middleware/requireApiKey.js';
+import { renderHandler, ffmpegAvailable } from './render/renderRoute.js';
 
 const app = express();
 // BEGINNER NOTE: Default port 3000 for VPS. For local testing with web UI running,
@@ -31,6 +32,11 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors()); // Allow requests from anywhere (needed for n8n)
 app.use(express.json({ limit: '10mb' })); // Parse JSON bodies
+
+// Shared-secret auth on everything except /health. This server is reachable
+// from the public internet and hands callers an LLM agent with tools, so it
+// must not be open. n8n sends the secret as an httpHeaderAuth credential.
+app.use(requireApiKey);
 
 // Session storage - Map of session_id to Agent instances
 // BEGINNER NOTE: In production, use Redis or a database for persistent sessions
@@ -80,9 +86,20 @@ async function initializeN8n(): Promise<void> {
  * Health check endpoint
  * BEGINNER NOTE: n8n can use this to verify the server is running
  */
-app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', message: 'Agent API Server is running' });
+app.get('/health', async (_req: Request, res: Response) => {
+  res.json({
+    status: 'ok',
+    message: 'Agent API Server is running',
+    auth: process.env.AGENT_API_KEY ? 'enabled' : 'MISSING_AGENT_API_KEY',
+    ffmpeg: (await ffmpegAvailable()) ? 'available' : 'missing',
+  });
 });
+
+/**
+ * Render endpoint - finish a video with ffmpeg (captions, lead-in, loudness).
+ * Deterministic on purpose: no agent, no tokens. See src/render/renderRoute.ts.
+ */
+app.post('/render', renderHandler);
 
 /**
  * Debug endpoint - Shows the last raw message received by /chat
@@ -232,7 +249,6 @@ app.post('/chat', async (req: Request, res: Response) => {
         createDateTimeTool(),
         createHttpFetchTool(),
         createDatabaseTool('/app/workspace'),
-        createCodeExecutionTool('/app/workspace'),
         ...n8nWorkflowTools, // Add n8n workflows as tools!
       ];
 
@@ -300,11 +316,16 @@ app.post('/reset', (req, res) => {
   // Connect to n8n MCP server
   await initializeN8n();
 
+  // Make the auth posture obvious in `docker logs` at boot, rather than letting
+  // a missing key surface later as workflows mysteriously returning 503.
+  warnIfUnauthenticated();
+
   // Start Express server
   app.listen(PORT, () => {
     console.log(`\n🤖 Agent API Server running on port ${PORT}`);
     console.log(`   Health check: http://localhost:${PORT}/health`);
     console.log(`   Chat endpoint: http://localhost:${PORT}/chat`);
+    console.log(`   Render endpoint: http://localhost:${PORT}/render`);
     console.log(`\n📝 Example n8n request body:`);
     console.log(`   { "message": "Hello!", "session_id": "n8n-workflow-1" }`);
   });
