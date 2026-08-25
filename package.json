@@ -50,7 +50,6 @@
     "googleapis": "^171.4.0",
     "inquirer": "^9.2.12",
     "ora": "^8.0.1",
-    "vm2": "^3.9.19",
     "zod": "^3.25.0"
   },
   "devDependencies": {
