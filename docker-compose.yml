@@ -12,6 +12,8 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - AGENT_API_KEY=${AGENT_API_KEY}
       - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-}
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-}
+      - UPLOAD_TTL_HOURS=${UPLOAD_TTL_HOURS:-24}
       # Optional: Perplexity API key for web search
       - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY:-}
       # Port configuration

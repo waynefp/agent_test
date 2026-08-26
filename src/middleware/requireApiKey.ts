@@ -21,6 +21,22 @@ import type { NextFunction, Request, Response } from 'express';
 const OPEN_PATHS = new Set(['/health']);
 
 /**
+ * Prefixes served without the secret.
+ *
+ * `/files/` hosts pipeline intermediates that third-party generation APIs fetch
+ * from their own servers, carrying none of our credentials — so the download
+ * cannot require a key. Safety comes from unguessable 32-hex names, a strict
+ * servable-name whitelist, and a TTL sweep (see src/render/uploadRoute.ts).
+ * Nothing there is listable. Do not put anything private behind this prefix.
+ */
+const OPEN_PREFIXES = ['/files/'];
+
+function isOpen(path: string): boolean {
+  if (OPEN_PATHS.has(path)) return true;
+  return OPEN_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
+
+/**
  * Compare two secrets without leaking their contents through timing.
  * A plain `===` returns faster the earlier it finds a mismatched byte, which
  * over many attempts reveals the secret one character at a time. Hashing first
@@ -33,7 +49,7 @@ function safeEqual(a: string, b: string): boolean {
 }
 
 export function requireApiKey(req: Request, res: Response, next: NextFunction): void {
-  if (OPEN_PATHS.has(req.path)) {
+  if (isOpen(req.path)) {
     next();
     return;
   }

@@ -24,6 +24,7 @@ import { PERSONAS, getPersona, buildSystemPrompt } from './config/personas.js';
 import { DEFAULT_AGENT_CONFIG } from './config/anthropic.config.js';
 import { requireApiKey, warnIfUnauthenticated } from './middleware/requireApiKey.js';
 import { renderHandler, ffmpegAvailable } from './render/renderRoute.js';
+import { uploadHandler, serveFileHandler } from './render/uploadRoute.js';
 
 const app = express();
 // BEGINNER NOTE: Default port 3000 for VPS. For local testing with web UI running,
@@ -106,6 +107,13 @@ app.get('/health', async (_req: Request, res: Response) => {
  * Deterministic on purpose: no agent, no tokens. See src/render/renderRoute.ts.
  */
 app.post('/render', renderHandler);
+
+/**
+ * Host a file so a URL-only generation API can fetch it. Raw binary body, not
+ * multipart — see src/render/uploadRoute.ts for why GET /files is public.
+ */
+app.post('/upload', express.raw({ type: '*/*', limit: '50mb' }), uploadHandler);
+app.get('/files/:name', serveFileHandler);
 
 /**
  * Debug endpoint - Shows the last raw message received by /chat
@@ -352,6 +360,7 @@ app.post('/reset', (req, res) => {
     console.log(`   Health check: http://localhost:${PORT}/health`);
     console.log(`   Chat endpoint: http://localhost:${PORT}/chat`);
     console.log(`   Render endpoint: http://localhost:${PORT}/render`);
+    console.log(`   Upload endpoint: http://localhost:${PORT}/upload`);
     console.log(`\n📝 Example n8n request body:`);
     console.log(`   { "message": "Hello!", "session_id": "n8n-workflow-1" }`);
   });
