@@ -21,6 +21,7 @@ import { createN8nMcpClient, createN8nWorkflowTools } from './mcp-clients/n8n/in
 import type { N8nMcpClient } from './mcp-clients/n8n/index.js';
 import type { BaseTool } from './tools/definitions/BaseTool.js';
 import { PERSONAS, getPersona, buildSystemPrompt } from './config/personas.js';
+import { DEFAULT_AGENT_CONFIG } from './config/anthropic.config.js';
 import { requireApiKey, warnIfUnauthenticated } from './middleware/requireApiKey.js';
 import { renderHandler, ffmpegAvailable } from './render/renderRoute.js';
 
@@ -45,6 +46,10 @@ const sessions = new Map<string, Agent>();
 // Track which persona each session is using
 // BEGINNER NOTE: We need this so we can tell the user their current persona
 const sessionPersonas = new Map<string, string>();
+
+// Track which model each session's Agent was built with, so a caller asking for
+// a different one gets a rebuilt Agent rather than being silently ignored.
+const sessionModels = new Map<string, string>();
 
 // n8n MCP Client - Connects to n8n workflows
 // BEGINNER NOTE: This lets the agent call n8n workflows as tools!
@@ -92,6 +97,7 @@ app.get('/health', async (_req: Request, res: Response) => {
     message: 'Agent API Server is running',
     auth: process.env.AGENT_API_KEY ? 'enabled' : 'MISSING_AGENT_API_KEY',
     ffmpeg: (await ffmpegAvailable()) ? 'available' : 'missing',
+    model: DEFAULT_AGENT_CONFIG.model,
   });
 });
 
@@ -179,10 +185,15 @@ Note: To switch personas, users need to start a new session with the desired per
  */
 app.post('/chat', async (req: Request, res: Response) => {
   try {
-    const { message, session_id = 'default', persona = 'default' }: { message?: string; session_id?: string; persona?: string } = req.body;
+    const {
+      message,
+      session_id = 'default',
+      persona = 'default',
+      model,
+    }: { message?: string; session_id?: string; persona?: string; model?: string } = req.body;
 
     // Capture raw request for debugging
-    lastRawRequest = { message, session_id, persona, timestamp: new Date().toISOString() };
+    lastRawRequest = { message, session_id, persona, model, timestamp: new Date().toISOString() };
 
     // Validate required fields
     if (!message) {
@@ -239,6 +250,18 @@ app.post('/chat', async (req: Request, res: Response) => {
     }
 
     // Get or create agent for this session
+    // A session's Agent is built once and cached, so its model is fixed for the
+    // session's life. If the caller asks for a different one, drop the cached
+    // Agent and rebuild — otherwise `model` would silently do nothing on every
+    // request after the first, which is worse than rejecting it outright.
+    const requestedModel = model ?? DEFAULT_AGENT_CONFIG.model;
+    if (sessions.has(session_id) && sessionModels.get(session_id) !== requestedModel) {
+      console.log(
+        `🔄 Session ${session_id}: model ${sessionModels.get(session_id)} -> ${requestedModel}, rebuilding agent`,
+      );
+      sessions.delete(session_id);
+    }
+
     let agent = sessions.get(session_id);
     if (!agent) {
       // Build tools array (standard tools + n8n workflows)
@@ -262,11 +285,13 @@ app.post('/chat', async (req: Request, res: Response) => {
           systemPrompt,
           maxTokens: 4096,
           temperature: selectedPersona.recommendedTemperature ?? 0.7,
+          model: requestedModel,
         },
         tools
       );
       sessions.set(session_id, agent);
       sessionPersonas.set(session_id, activePersonaId);
+      sessionModels.set(session_id, requestedModel);
       console.log(`✨ Created new agent session: ${session_id} [persona: ${activePersonaId}] (${tools.length} tools)`);
     }
 
@@ -305,6 +330,7 @@ app.post('/reset', (req, res) => {
   if (sessions.has(session_id)) {
     sessions.delete(session_id);
     sessionPersonas.delete(session_id);
+  sessionModels.delete(session_id);
     return res.json({ status: 'ok', session_id, message: 'Session cleared' });
   }
 
