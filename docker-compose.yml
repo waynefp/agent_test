@@ -11,6 +11,7 @@ services:
       # Required: Set your Anthropic API key
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - AGENT_API_KEY=${AGENT_API_KEY}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-}
       # Optional: Perplexity API key for web search
       - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY:-}
       # Port configuration

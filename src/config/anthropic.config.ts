@@ -88,19 +88,25 @@ export function getAnthropicClient(): Anthropic {
 }
 
 /**
- * Helper function to validate a model name
- * BEGINNER NOTE: Makes sure you're using a valid Claude model
+ * Known-good model ids, newest first.
+ *
+ * NOTE: nothing in the request path calls isValidModel — an unknown id is passed
+ * straight to the API, which rejects it with a clear error of its own. That is
+ * deliberate: a hardcoded allowlist goes stale the moment a new model ships, and
+ * a list that silently blocks valid models is worse than no list. This exists for
+ * callers that want to check an id before using it.
  */
+export const KNOWN_MODELS = [
+  'claude-opus-5',
+  'claude-sonnet-5',
+  'claude-fable-5',
+  'claude-haiku-4-5-20251001',
+  'claude-opus-4-5-20251101',
+  'claude-sonnet-4-5-20250929',
+] as const;
+
 export function isValidModel(model: string): boolean {
-  const validModels = [
-    'claude-opus-4-5-20251101',
-    'claude-sonnet-4-5-20250929',
-    'claude-3-7-sonnet-20250219',
-    'claude-3-5-haiku-20241022',
-    'claude-3-5-sonnet-20241022',
-    'claude-3-opus-20240229',
-  ];
-  return validModels.includes(model);
+  return (KNOWN_MODELS as readonly string[]).includes(model);
 }
 
 /**

@@ -87,7 +87,7 @@ export function getEnvironmentConfig(): EnvironmentConfig {
     anthropicApiKey: process.env.ANTHROPIC_API_KEY!,
 
     // Optional with defaults
-    anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20250929',
+    anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5',
     maxTokens: parseInt(process.env.MAX_TOKENS || '8192', 10),
 
     // Extended Thinking (Phase 16)
