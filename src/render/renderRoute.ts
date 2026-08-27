@@ -18,9 +18,13 @@
  *   "font":       "DejaVu Sans"
  * }
  *
- * All timestamps are in FINAL timeline coordinates — i.e. they already include
- * the lead-in. The caller computes the timeline anyway when it assembles the
+ * Timestamps are in FINAL timeline coordinates — i.e. they already include the
+ * lead-in. The caller computes the timeline anyway when it assembles the
  * voiceover, so asking it to subtract the pad again would only invite drift.
+ *
+ * NEGATIVE timestamps count back from the end of the finished video, so a
+ * closing CTA card can be placed as `start: -4.8, end: -0.2` by a caller that
+ * knows what the last line says but not yet how long the video runs.
  *
  * Responds with the video/mp4 bytes.
  */
@@ -36,9 +40,11 @@ import { buildAss, findOverlap, type Caption, type UrlCard } from './subtitles.j
 const MAX_DOWNLOAD_BYTES = 200 * 1024 * 1024; // 200 MB
 const FFMPEG_TIMEOUT_MS = 5 * 60 * 1000;
 
+// Negative timestamps mean "seconds before the end of the finished video" —
+// see resolveTime(). So no .min(0) here.
 const captionSchema = z.object({
-  start: z.number().min(0),
-  end: z.number().min(0),
+  start: z.number(),
+  end: z.number(),
   text: z.string().min(1),
 });
 
@@ -49,8 +55,8 @@ const bodySchema = z.object({
   url_card: z
     .object({
       text: z.string().min(1).max(120),
-      start: z.number().min(0),
-      end: z.number().min(0),
+      start: z.number(),
+      end: z.number(),
     })
     .nullish(),
   loudnorm: z.boolean().default(true),
@@ -132,12 +138,13 @@ function run(cmd: string, args: string[], timeoutMs: number): Promise<string> {
   });
 }
 
-async function probeSize(path: string): Promise<{ width: number; height: number }> {
+async function probeSize(path: string): Promise<{ width: number; height: number; duration: number }> {
   const out = await new Promise<string>((resolve, reject) => {
     const child = spawn('ffprobe', [
       '-v', 'error',
       '-select_streams', 'v:0',
       '-show_entries', 'stream=width,height',
+      '-show_entries', 'format=duration',
       '-of', 'csv=p=0',
       path,
     ]);
@@ -148,9 +155,30 @@ async function probeSize(path: string): Promise<{ width: number; height: number 
       code === 0 ? resolve(stdout.trim()) : reject(new Error(`ffprobe exited ${code}`)),
     );
   });
-  const [w, h] = out.split(',').map((n) => parseInt(n, 10));
+  // ffprobe prints the stream line then the format line: "720,1280" then "7.2"
+  const lines = out.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const dims = (lines[0] ?? '').split(',');
+  const w = parseInt(dims[0] ?? '', 10);
+  const h = parseInt(dims[1] ?? '', 10);
+  const duration = parseFloat(lines[1] ?? '0');
   if (!w || !h) throw new Error(`Could not read video dimensions (ffprobe said "${out}")`);
-  return { width: w, height: h };
+  return { width: w, height: h, duration: Number.isFinite(duration) ? duration : 0 };
+}
+
+/**
+ * Resolve a timestamp that may be counted from the end of the finished video.
+ *
+ * A caller assembling the request usually knows what the closing line SAYS but
+ * not when it lands — the video does not exist yet. Negative values mean
+ * "seconds before the end", so a CTA card can be placed with `start: -4.8,
+ * end: -0.2` without anyone having to predict the duration.
+ *
+ * Zero and positive values are absolute, measured in the final timeline (i.e.
+ * after the lead-in pad), which is what the caption path already assumes.
+ */
+function resolveTime(t: number, finalDuration: number): number {
+  if (t >= 0) return t;
+  return Math.max(0, finalDuration + t);
 }
 
 export async function renderHandler(req: Request, res: Response): Promise<void> {
@@ -167,17 +195,6 @@ export async function renderHandler(req: Request, res: Response): Promise<void> 
     return;
   }
 
-  const urlCard: UrlCard | null = body.url_card
-    ? { text: body.url_card.text, start: body.url_card.start, end: body.url_card.end }
-    : null;
-  const captions: Caption[] = body.captions;
-
-  const overlap = findOverlap(captions, urlCard);
-  if (overlap) {
-    res.status(400).json({ error: 'Captions overlap the URL card', detail: overlap });
-    return;
-  }
-
   const work = await mkdtemp(join(tmpdir(), 'render-'));
   const input = join(work, 'in.mp4');
   const subs = join(work, 'subs.ass');
@@ -185,7 +202,31 @@ export async function renderHandler(req: Request, res: Response): Promise<void> 
 
   try {
     await download(body.video_url, input);
-    const { width, height } = await probeSize(input);
+    const probed = await probeSize(input);
+    const width = probed.width;
+    const height = probed.height;
+
+    // Everything downstream is expressed in the FINAL timeline, which includes
+    // the lead-in we are about to add.
+    const finalDuration = probed.duration + body.lead_in;
+    const captions: Caption[] = body.captions.map((c) => ({
+      start: resolveTime(c.start, finalDuration),
+      end: resolveTime(c.end, finalDuration),
+      text: c.text,
+    }));
+    const urlCard: UrlCard | null = body.url_card
+      ? {
+          text: body.url_card.text,
+          start: resolveTime(body.url_card.start, finalDuration),
+          end: resolveTime(body.url_card.end, finalDuration),
+        }
+      : null;
+
+    const overlap = findOverlap(captions, urlCard);
+    if (overlap) {
+      res.status(400).json({ error: 'Captions overlap the URL card', detail: overlap });
+      return;
+    }
 
     const filters: string[] = [];
     if (body.lead_in > 0) {
