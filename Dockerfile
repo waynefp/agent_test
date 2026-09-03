@@ -36,6 +36,17 @@ FROM node:20-alpine AS runtime
 
 WORKDIR /app
 
+# Build identity, reported by GET /health so "is the deployed code current?" is a
+# check rather than an inference. CI passes the real commit as a build arg, which
+# cannot drift from the source in this image. The VERSION file below is only a
+# fallback for local builds that pass no args — it is hand-updated and often
+# stale, so src/buildInfo.ts labels a value that came from it as such.
+ARG GIT_COMMIT=""
+ARG BUILD_TIME=""
+ENV GIT_COMMIT=$GIT_COMMIT
+ENV BUILD_TIME=$BUILD_TIME
+COPY VERSION ./
+
 # ffmpeg powers POST /render (captions, lead-in, loudness normalisation).
 # ttf-dejavu matters as much as ffmpeg: libass has no font of its own, and
 # without one burned-in subtitles render as empty boxes with no error.
