@@ -25,6 +25,7 @@ import { DEFAULT_AGENT_CONFIG } from './config/anthropic.config.js';
 import { requireApiKey, warnIfUnauthenticated } from './middleware/requireApiKey.js';
 import { renderHandler, ffmpegAvailable } from './render/renderRoute.js';
 import { uploadHandler, serveFileHandler } from './render/uploadRoute.js';
+import { BUILD_INFO } from './buildInfo.js';
 
 const app = express();
 // BEGINNER NOTE: Default port 3000 for VPS. For local testing with web UI running,
@@ -91,6 +92,9 @@ async function initializeN8n(): Promise<void> {
 /**
  * Health check endpoint
  * BEGINNER NOTE: n8n can use this to verify the server is running
+ *
+ * `build` answers "is the deploy current?" without guessing — compare
+ * `build.short` against the latest commit on main. See src/buildInfo.ts.
  */
 app.get('/health', async (_req: Request, res: Response) => {
   res.json({
@@ -99,6 +103,7 @@ app.get('/health', async (_req: Request, res: Response) => {
     auth: process.env.AGENT_API_KEY ? 'enabled' : 'MISSING_AGENT_API_KEY',
     ffmpeg: (await ffmpegAvailable()) ? 'available' : 'missing',
     model: DEFAULT_AGENT_CONFIG.model,
+    build: BUILD_INFO,
   });
 });
 
